@@ -295,8 +295,8 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
       throw NetworkException();
     } on LanisException {
       rethrow;
-    } catch (e) {
-      throw UnknownException();
+    } catch (e, stack) {
+      Error.throwWithStackTrace(UnknownException(e.runtimeType.toString()), stack);
     }
   }
 

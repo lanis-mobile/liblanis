@@ -151,8 +151,8 @@ class CalendarParser extends AppletParser<List<CalendarEvent>> {
       return parseEventsJson('${response.data}', categories);
     } on SocketException {
       throw NetworkException();
-    } catch (e) {
-      throw UnknownException();
+    } catch (e, stack) {
+      Error.throwWithStackTrace(UnknownException(e.runtimeType.toString()), stack);
     }
   }
 
