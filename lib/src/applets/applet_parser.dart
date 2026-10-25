@@ -149,7 +149,21 @@ class AppletParser<T> {
         isEmpty = false;
       } catch (ex, stack) {
         if (!secondTry) {
-          await ctx.session.authenticate();
+          try {
+            await ctx.session.authenticate();
+          } catch (authError, authStack) {
+            _reportUnexpectedError(authError, authStack);
+            addResponse(
+              FetcherResponse<T>(
+                status: FetcherStatus.error,
+                error: ExceptionWithStackTrace(
+                  exception: authError,
+                  stackTrace: authStack,
+                ),
+              ),
+            );
+            return;
+          }
           await fetchData(forceRefresh: true, secondTry: true);
           return;
         }

@@ -27,6 +27,7 @@ class LanisSession {
   late CookieJar jar;
   final Dio dio = Dio();
   Timer? preventLogoutTimer;
+  Future<void>? _authentication;
 
   Map<String, String> userData = {};
   AccountType? _accountType;
@@ -99,11 +100,22 @@ class LanisSession {
     bool withoutData = false,
     String? withLoginUrl,
   }) async {
+    // Authentication changes the shared cookies and encryption key. Keep each
+    // call intact, including its options, until the previous call has finished.
+    while (_authentication != null) {
+      try {
+        await _authentication;
+      } catch (_) {
+        // A previous caller's failure must not prevent this caller from retrying.
+      }
+    }
+    final authentication = _authenticate(
+      withoutData: withoutData,
+      withLoginUrl: withLoginUrl,
+    );
+    _authentication = authentication;
     try {
-      await _authenticate(
-        withoutData: withoutData,
-        withLoginUrl: withLoginUrl,
-      );
+      await authentication;
     } on LanisException {
       rethrow;
     } on DioException catch (e) {
@@ -113,6 +125,8 @@ class LanisSession {
         throw NoConnectionException();
       }
       throw UnknownException(e.message ?? e.toString());
+    } finally {
+      _authentication = null;
     }
   }
 
@@ -258,7 +272,7 @@ class LanisSession {
         ),
       );
       if (response.statusCode == 503) {
-        throw LanisDownException();
+        connectionChecker.status = ConnectionStatus.disconnected;
       }
     } on DioException {
       return;
