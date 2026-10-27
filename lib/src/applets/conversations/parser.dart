@@ -281,6 +281,7 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
         groupChat: conversation['groupOnly'] == 'ja',
         onlyPrivateAnswers: conversation['privateAnswerOnly'] == 'ja',
         noReply: conversation['noAnswerAllowed'] == 'ja',
+        sender: conversation['Sender']?.toString(),
         parent: parent,
         countStudents: countStudents,
         countTeachers: countTeachers,
@@ -359,7 +360,10 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
   ///
   /// [groupOnly] and [privateAnswerOnly] are only checked for existence and then ignored.
   ///
-  /// [sender] is the **"Sender"** of the head message, you can also use **"all"**.
+  /// [sender] is the **"Sender"** of the head message ([Conversation.sender]),
+  /// or **"all"**. The server routes the reply by this value only, so a reply
+  /// in a `privateAnswerOnly` conversation sent with **"all"** is visible to
+  /// every participant.
   ///
   /// [message] supports Lanis-styled text.
   ///
