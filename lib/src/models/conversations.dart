@@ -57,6 +57,10 @@ class Conversation {
 
   final bool noReply;
 
+  /// "Sender" of the head message. Replies in a [ChatType.privateAnswerOnly]
+  /// conversation have to be addressed to it, otherwise they reach everyone.
+  final String? sender;
+
   final int countStudents;
   final int countTeachers;
   final int countParents;
@@ -71,6 +75,7 @@ class Conversation {
     required this.groupChat,
     required this.onlyPrivateAnswers,
     required this.noReply,
+    this.sender,
     required this.parent,
     required this.countParents,
     required this.countStudents,
