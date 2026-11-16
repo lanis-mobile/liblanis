@@ -23,3 +23,7 @@ doc/api/
 
 # Generated sources not shipped from this package
 *.freezed.dart
+
+# Local bug reports and transient request dumps
+temp*
+failed_ip*

@@ -112,8 +112,12 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
       throw NetworkException();
     } on DioException {
       throw NetworkException();
-    } catch (e) {
-      throw UnknownException();
+    } catch (e, stack) {
+      if (e is LanisException) rethrow;
+      Error.throwWithStackTrace(
+        UnknownException('${e.runtimeType}: $e'),
+        stack,
+      );
     }
   }
 
@@ -145,8 +149,12 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
       throw NetworkException();
     } on DioException {
       throw NetworkException();
-    } catch (e) {
-      throw UnknownException();
+    } catch (e, stack) {
+      if (e is LanisException) rethrow;
+      Error.throwWithStackTrace(
+        UnknownException('${e.runtimeType}: $e'),
+        stack,
+      );
     }
   }
 
@@ -343,13 +351,16 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
         }).toList(),
         lastRefresh: newLastRefresh,
       );
-    } catch (e) {
+    } catch (e, stack) {
       if (e is SocketException || e is DioException) {
         throw NetworkException();
       } else if (e is LanisException) {
         rethrow;
       } else {
-        throw UnknownException();
+        Error.throwWithStackTrace(
+          UnknownException('${e.runtimeType}: $e'),
+          stack,
+        );
       }
     }
   }
@@ -415,8 +426,11 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
       throw NetworkException();
     } on LanisException {
       rethrow;
-    } catch (e) {
-      throw UnknownException();
+    } catch (e, stack) {
+      Error.throwWithStackTrace(
+        UnknownException('${e.runtimeType}: $e'),
+        stack,
+      );
     }
   }
 
@@ -491,8 +505,11 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
       throw NetworkException();
     } on LanisException {
       rethrow;
-    } catch (e) {
-      throw UnknownException();
+    } catch (e, stack) {
+      Error.throwWithStackTrace(
+        UnknownException('${e.runtimeType}: $e'),
+        stack,
+      );
     }
   }
 
@@ -527,8 +544,12 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
       throw NetworkException();
     } on DioException {
       throw NetworkException();
-    } catch (e) {
-      throw UnknownException();
+    } catch (e, stack) {
+      if (e is LanisException) rethrow;
+      Error.throwWithStackTrace(
+        UnknownException('${e.runtimeType}: $e'),
+        stack,
+      );
     }
   }
 
@@ -577,8 +598,12 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
       throw NetworkException();
     } on DioException {
       throw NetworkException();
-    } catch (e) {
-      throw UnknownException();
+    } catch (e, stack) {
+      if (e is LanisException) rethrow;
+      Error.throwWithStackTrace(
+        UnknownException('${e.runtimeType}: $e'),
+        stack,
+      );
     }
   }
 

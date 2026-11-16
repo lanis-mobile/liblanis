@@ -10,6 +10,9 @@ class Lesson {
   Map<String, String>? attendances;
   CurrentEntry? currentEntry;
 
+  /// Whether this folder belongs to the overview's older courses section.
+  final bool isOlder;
+
   Lesson({
     required this.courseID,
     required this.name,
@@ -17,6 +20,7 @@ class Lesson {
     required this.courseURL,
     this.attendances,
     this.currentEntry,
+    this.isOlder = false,
   });
 }
 
