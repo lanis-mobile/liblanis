@@ -1,0 +1,314 @@
+[
+  {
+    "key": "lesson_00",
+    "date": "13.08.2026",
+    "subject": "Willkommen im Informatikkurs",
+    "content": "Gemeinsam sammeln wir Beispiele für Informatik im Alltag. Wir besprechen die Arbeitsweise im Computerraum und richten unsere Projektordner ein.",
+    "homework": "Lege einen übersichtlichen Projektordner an und notiere drei Beispiele für Informatik in deinem Alltag.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_01",
+    "date": "18.08.2026",
+    "subject": "Wie Computer Informationen verarbeiten",
+    "content": "Das EVA-Prinzip verbindet Eingabe, Verarbeitung und Ausgabe. In Partnerarbeit ordnen wir Bauteile eines Computers diesen Schritten zu.",
+    "homework": "Erkläre das EVA-Prinzip am Beispiel eines Fahrkartenautomaten.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_02",
+    "date": "20.08.2026",
+    "subject": "Informationen digital darstellen",
+    "content": "Wir unterscheiden Daten und Informationen und vergleichen analoge mit digitalen Darstellungen. Kleine Experimente zeigen, wie Texte, Bilder und Töne codiert werden.",
+    "homework": "Bearbeite die Aufgaben 1 bis 3 auf dem Arbeitsblatt zur digitalen Darstellung.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": [
+      "Digitale_Darstellung.pdf"
+    ]
+  },
+  {
+    "key": "lesson_03",
+    "date": "25.08.2026",
+    "subject": "Binärzahlen und Zahlensysteme",
+    "content": "Vom Dezimalsystem zum Binärsystem: Wir untersuchen Stellenwerte, wandeln Zahlen um und entschlüsseln kurze Nachrichten.",
+    "homework": "Wandle die Zahlen 13, 27 und 42 ins Binärsystem um. Beschreibe deinen Rechenweg.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_04",
+    "date": "27.08.2026",
+    "subject": "Algorithmen im Alltag",
+    "content": "Eindeutigkeit, Endlichkeit und Ausführbarkeit: Aus Alltagsbeschreibungen entwickeln wir präzise Handlungsanweisungen.",
+    "homework": "Formuliere einen Algorithmus für die Suche nach einem Buch in der Schulbibliothek.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_05",
+    "date": "01.09.2026",
+    "subject": "Struktogramme und Ablaufpläne",
+    "content": "Wir stellen Abläufe grafisch dar und vergleichen zwei Darstellungsformen. Eine Ampelsteuerung dient als gemeinsames Beispiel.",
+    "homework": "Erstelle ein Struktogramm für einen einfachen Passwort-Check.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": [
+      "Struktogramme_und_Ablaufplaene.pdf"
+    ]
+  },
+  {
+    "key": "lesson_06",
+    "date": "03.09.2026",
+    "subject": "Variablen, Datentypen und Operatoren",
+    "content": "Werte speichern, verändern und ausgeben: Wir entwickeln kleine Programme und untersuchen typische Typfehler.",
+    "homework": "Ergänze das Programm zum Berechnen eines Einkaufspreises um einen Rabatt.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_07",
+    "date": "08.09.2026",
+    "subject": "Verzweigungen: Entscheidungen modellieren",
+    "content": "Mit if, elif und else reagieren Programme auf unterschiedliche Eingaben. Wir testen Grenzfälle und kombinieren Bedingungen.",
+    "homework": "Entwickle eine Altersprüfung mit mindestens drei unterschiedlichen Ausgaben.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_08",
+    "date": "10.09.2026",
+    "subject": "Schleifen und Zählvariablen",
+    "content": "Wiederholungen sparen Arbeit. Wir vergleichen for- und while-Schleifen anhand von Zahlenfolgen und wiederkehrenden Eingaben.",
+    "homework": "Löse die Schleifenaufgaben 1 bis 4 und dokumentiere zwei selbst gewählte Testfälle.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": [
+      "Schleifen_Training.pdf"
+    ]
+  },
+  {
+    "key": "lesson_09",
+    "date": "15.09.2026",
+    "subject": "Funktionen sinnvoll strukturieren",
+    "content": "Wir zerlegen ein größeres Problem in kleine Funktionen. Parameter und Rückgabewerte helfen uns, Code mehrfach zu verwenden.",
+    "homework": "Schreibe eine Funktion, die den Mittelwert einer Liste berechnet.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_10",
+    "date": "17.09.2026",
+    "subject": "Listen und Datenstrukturen",
+    "content": "Listen speichern zusammengehörige Daten. Wir üben Zugriff, Einfügen, Löschen und das Durchlaufen einer Liste.",
+    "homework": "Erweitere die Aufgabenverwaltung um das Löschen erledigter Aufgaben.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_11",
+    "date": "22.09.2026",
+    "subject": "Suchen in Datenbeständen",
+    "content": "Lineare und binäre Suche im Vergleich: Wir zählen Vergleiche und diskutieren, warum die Sortierung der Daten wichtig ist.",
+    "homework": "Vergleiche beide Suchverfahren für eine Liste mit 32 Einträgen.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_12",
+    "date": "24.09.2026",
+    "subject": "Sortierverfahren im Vergleich",
+    "content": "Wir sortieren Spielkarten und übertragen unsere Strategien in Programme. Die Anzahl der Vergleiche macht Unterschiede sichtbar.",
+    "homework": "Erkläre einen Sortierdurchlauf von Insertion Sort an einem eigenen Beispiel.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_13",
+    "date": "29.09.2026",
+    "subject": "Testen und Fehler systematisch finden",
+    "content": "Mit aussagekräftigen Testfällen finden wir Fehler frühzeitig. Wir unterscheiden Syntaxfehler, Laufzeitfehler und logische Fehler.",
+    "homework": "Erstelle ein Testprotokoll mit Normalfällen, Grenzfällen und ungültigen Eingaben.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": [
+      "Testfaelle_und_Debugging.pdf"
+    ],
+    "upload": {
+      "title": "Testprotokoll",
+      "deadline": "2026-10-06 18:00:00",
+      "file": "Testfaelle_und_Debugging.pdf"
+    }
+  },
+  {
+    "key": "lesson_14",
+    "date": "01.10.2026",
+    "subject": "Übungswerkstatt: Algorithmen sicher anwenden",
+    "content": "Stationenarbeit zur Vorbereitung der Klausur. Wir wiederholen Schleifen, Funktionen, Listen und Suchverfahren und besprechen offene Fragen.",
+    "homework": "Bearbeite die Wiederholungsaufgaben und markiere Fragen für die nächste Stunde.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": [
+      "Klausurvorbereitung_Algorithmen.pdf"
+    ]
+  },
+  {
+    "key": "lesson_15",
+    "date": "20.10.2026",
+    "subject": "Datenbanken: Tabellen und Beziehungen",
+    "content": "Wir modellieren eine kleine Schulbibliothek mit Büchern, Ausleihen und Lesenden. Primär- und Fremdschlüssel machen Beziehungen eindeutig.",
+    "homework": "Entwirf ein Datenmodell für eine Musiksammlung mit drei verbundenen Tabellen.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": [
+      "Datenbanken_Modellierung.pdf",
+      "Bibliothek_Beispieldaten.csv"
+    ]
+  },
+  {
+    "key": "lesson_16",
+    "date": "22.10.2026",
+    "subject": "Klausur 1: Algorithmen und Datenstrukturen",
+    "content": "Schriftlicher Leistungsnachweis zu Kontrollstrukturen, Funktionen und Listen. Im Anschluss reflektieren wir hilfreiche Lösungsstrategien.",
+    "homework": "",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_17",
+    "date": "27.10.2026",
+    "subject": "SQL: Daten gezielt abfragen",
+    "content": "SELECT, FROM und WHERE: Wir formulieren erste Abfragen für unsere Bibliotheksdatenbank und prüfen die Ergebnisse.",
+    "homework": "Formuliere fünf sinnvolle Abfragen für die Bibliotheksdatenbank.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_18",
+    "date": "29.10.2026",
+    "subject": "SQL: Filtern, Sortieren und Gruppieren",
+    "content": "Mit ORDER BY, GROUP BY und Aggregatfunktionen verdichten wir Informationen. Wir besprechen typische Fehler bei gruppierten Abfragen.",
+    "homework": "Löse die Zusatzaufgaben zu COUNT, AVG und GROUP BY.",
+    "homeworkDone": true,
+    "from": "5",
+    "to": "6",
+    "attachments": [
+      "SQL_Uebungsblatt.pdf"
+    ]
+  },
+  {
+    "key": "lesson_19",
+    "date": "03.11.2026",
+    "subject": "Webentwicklung: HTML und CSS",
+    "content": "Wir gestalten die erste Seite unseres Lernplaners. Semantisches HTML und ein flexibles Layout bilden die Grundlage für eine übersichtliche Oberfläche.",
+    "homework": "Erstelle eine responsive Startseite mit Navigation, Aufgabenliste und einem eigenen Farbschema.",
+    "homeworkDone": false,
+    "from": "5",
+    "to": "6",
+    "attachments": [],
+    "upload": {
+      "title": "Responsive Webseite",
+      "deadline": "2026-11-09 18:00:00",
+      "file": "Lernplaner_Zwischenstand.zip"
+    }
+  },
+  {
+    "key": "lesson_20",
+    "date": "05.11.2026",
+    "subject": "Interaktive Webseiten mit JavaScript",
+    "content": "Ereignisse verbinden Oberfläche und Programmlogik. Wir fügen Aufgaben hinzu, markieren sie als erledigt und filtern die Liste.",
+    "homework": "Ergänze eine Filterfunktion für offene und erledigte Aufgaben.",
+    "homeworkDone": false,
+    "from": "5",
+    "to": "6",
+    "attachments": []
+  },
+  {
+    "key": "lesson_21",
+    "date": "10.11.2026",
+    "subject": "Projektplanung: Unser digitaler Lernplaner",
+    "content": "In kleinen Teams legen wir Ziele, Anforderungen und Zuständigkeiten fest. Aus Nutzergeschichten entsteht unser erstes Aufgabenboard.",
+    "homework": "Erstelle einen Projektsteckbrief mit Zielgruppe, drei Nutzergeschichten und einem Zeitplan.",
+    "homeworkDone": false,
+    "from": "5",
+    "to": "6",
+    "attachments": [
+      "Projektsteckbrief_Vorlage.pdf"
+    ],
+    "upload": {
+      "title": "Projektsteckbrief",
+      "deadline": "2026-11-16 18:00:00",
+      "file": null
+    }
+  },
+  {
+    "key": "lesson_22",
+    "date": "11.11.2026",
+    "subject": "Projektwerkstatt: Datenmodell und Oberflächen",
+    "content": "Wir gleichen Datenmodell und Wireframes miteinander ab. Im kurzen Design-Review begründen die Teams ihre Entscheidungen und sammeln Verbesserungsvorschläge.",
+    "homework": "Überarbeite deine Wireframes anhand des Feedbacks. Ergänze Ansichten für Smartphone und Tablet.",
+    "homeworkDone": false,
+    "from": "5",
+    "to": "6",
+    "attachments": [
+      "Wireframes_und_Designcheck.pdf"
+    ],
+    "upload": {
+      "title": "Wireframes",
+      "deadline": "2026-11-18 18:00:00",
+      "file": "Wireframes_und_Designcheck.pdf"
+    }
+  },
+  {
+    "key": "lesson_23",
+    "date": "12.11.2026",
+    "subject": "Projektwerkstatt: Lernplaner entwickeln",
+    "content": "Heute verbinden wir Oberfläche, Datenmodell und Programmlogik.\n\nArbeitsauftrag:\n1. Aufgaben anlegen, bearbeiten und abschließen.\n2. Eingaben prüfen und verständliche Fehlermeldungen anzeigen.\n3. Mindestens fünf automatisierte Tests ergänzen.\n\nZum Abschluss stellen wir einen funktionierenden Zwischenstand vor und geben uns konstruktives Feedback.",
+    "homework": "Entwickle deinen Lernplaner weiter und lade einen dokumentierten Zwischenstand hoch.\n\nAchte besonders auf:\n- eine klare Navigation und gut lesbare Texte,\n- sinnvolle Testfälle und verständliche Fehlermeldungen,\n- eine kurze README mit Startanleitung.\n\nNächster Meilenstein: Code-Review und Präsentation.",
+    "homeworkDone": false,
+    "from": "5",
+    "to": "6",
+    "attachments": [
+      "Projektauftrag_Lernplaner.pdf",
+      "Lernplaner_Starterprojekt.zip",
+      "README_Lernplaner.txt"
+    ],
+    "upload": {
+      "title": "Lernplaner: Zwischenstand",
+      "deadline": "2026-11-23 18:00:00",
+      "file": "Lernplaner_Zwischenstand.zip"
+    }
+  }
+]

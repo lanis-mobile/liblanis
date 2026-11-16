@@ -26,8 +26,8 @@ void main() {
   });
 
   group('lessons parser', () {
-    // TODO: Add anonymized fixture-based parser tests once this account
-    // has stable lesson data (or commit empty-state fixtures).
+    // Covered by test/lessons_student_parser_test.dart (live fixtures,
+    // seeded layout mutations, and named GlitchTip regressions).
   });
 
   group('data_storage parser', () {

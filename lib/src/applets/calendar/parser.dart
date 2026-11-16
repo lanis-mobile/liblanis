@@ -182,8 +182,12 @@ class CalendarParser extends AppletParser<List<CalendarEvent>> {
       return Map<String, dynamic>.from(data);
     } on SocketException {
       throw NetworkException();
-    } catch (e) {
-      throw UnknownException();
+    } catch (e, stack) {
+      if (e is LanisException) rethrow;
+      Error.throwWithStackTrace(
+        UnknownException('${e.runtimeType}: $e'),
+        stack,
+      );
     }
   }
 

@@ -25,3 +25,28 @@ doc/api/
 # Per-applet tooling: ephemeral scrape dumps + resume state
 tool/*/discovery/
 tool/*/run/
+
+failed_ip*
+temp*
+
+# Generated binary fixtures and upload samples
+/test/fixtures/**/*.pdf
+/test/fixtures/**/*.zip
+/test/fixtures/**/*.png
+/test/fixtures/**/*.jpg
+/test/fixtures/**/*.jpeg
+/test/fixtures/**/*.gif
+/test/fixtures/**/*.webp
+/test/fixtures/**/*.docx
+/test/fixtures/**/*.xlsx
+/test/fixtures/**/*.pptx
+/tool/**/*.pdf
+/tool/**/*.zip
+/tool/**/*.png
+/tool/**/*.jpg
+/tool/**/*.jpeg
+/tool/**/*.gif
+/tool/**/*.webp
+/tool/**/*.docx
+/tool/**/*.xlsx
+/tool/**/*.pptx

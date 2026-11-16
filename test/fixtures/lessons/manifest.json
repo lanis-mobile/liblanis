@@ -1,0 +1,314 @@
+[
+  {
+    "source": "student_00_empty_detail.html",
+    "fixture": "student_00_empty_detail.html",
+    "sha256": "61a5ce7e0051b5ecbd5db424fa9cbae839ec9f6606b0dbda798c3da187ef9722",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_00_empty_overview.html",
+    "fixture": "student_00_empty_overview.html",
+    "sha256": "a56c3ef3b419da02f2d8b95b0263e980394384d565edfe8bbf08a18a2661edfd",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_01_blank_detail.html",
+    "fixture": "student_01_blank_detail.html",
+    "sha256": "9a8a7b93d7c7f5adfb120458a08f59df0e139ba8cfb523ed61e8684c28aba9dd",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_01_blank_overview.html",
+    "fixture": "student_01_blank_overview.html",
+    "sha256": "72f95fa6909bc308f0450f4f9eb73edd86b5fa0813f9ccd6912361553339aa7f",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_02_homework_detail.html",
+    "fixture": "student_02_homework_detail.html",
+    "sha256": "c50705f40acd6dd9f5503d37fb8f5101cfd2cc72846a6d659edda44b452b81e5",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_02_homework_overview.html",
+    "fixture": "student_02_homework_overview.html",
+    "sha256": "d30d7400c1133f4e5560f5757d1692428d82f67c2a031fedc0d5de771dc8d3fb",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_03_future_hidden_detail.html",
+    "fixture": "student_02_homework_detail.html",
+    "sha256": "c50705f40acd6dd9f5503d37fb8f5101cfd2cc72846a6d659edda44b452b81e5",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_03_future_hidden_overview.html",
+    "fixture": "student_02_homework_overview.html",
+    "sha256": "d30d7400c1133f4e5560f5757d1692428d82f67c2a031fedc0d5de771dc8d3fb",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_04_future_visible_detail.html",
+    "fixture": "student_04_future_visible_detail.html",
+    "sha256": "b55250f26e03b0280f6def65a478286da0830710aab37570362e1da7a5ff3345",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_04_future_visible_overview.html",
+    "fixture": "student_04_future_visible_overview.html",
+    "sha256": "b43d934d0cf395fadde7654e9f8e1b38d4de9670c7ee6bfb6c1ff1e51c42c197",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_05_open_upload.html",
+    "fixture": "student_05_open_upload.html",
+    "sha256": "abaaae18607c8a71c0366c241c741f279f9ff3e7d2fb0b443262fbf9aeca4ca0",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_05_upload_open_detail.html",
+    "fixture": "student_05_upload_open_detail.html",
+    "sha256": "7bf96d3ceb9cb434cf0e381ee0b3b5e43a29e37d81e70345707ae17a1cf5e47a",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_05_upload_open_overview.html",
+    "fixture": "student_05_upload_open_overview.html",
+    "sha256": "b948e1aa22d86897e77d00b45a2149118fb3e054767898667aef17687f39f198",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_06_attachment_detail.html",
+    "fixture": "student_06_attachment_detail.html",
+    "sha256": "f93d7c67209df11a3dfecc9e0f166dd0e618b7bd7214d149d9c223f0224e2bdb",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_06_attachment_overview.html",
+    "fixture": "student_05_upload_open_overview.html",
+    "sha256": "b948e1aa22d86897e77d00b45a2149118fb3e054767898667aef17687f39f198",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_07_own_public_upload.html",
+    "fixture": "student_07_own_public_upload.html",
+    "sha256": "35332b450dca4931b2d8deed80e89d6ac42bea8654b696c2cd986b04c8a75773",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_07_uploaded_detail.html",
+    "fixture": "student_07_uploaded_detail.html",
+    "sha256": "71f97078efdb83305ae548edeccb34cad2050e1a8c8506ed3fc07861d42638b9",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_07_uploaded_overview.html",
+    "fixture": "student_07_uploaded_overview.html",
+    "sha256": "09e294a7cb28bb202dfe847d440db510ce15581cab65b82c758cb58a2c64b935",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_08_single_file_upload.html",
+    "fixture": "student_08_single_file_upload.html",
+    "sha256": "790a6de61b0f808c827994c7198093b041ebc74086dc4a12b57284b6bb7d058e",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_09_private_upload.html",
+    "fixture": "student_09_private_upload.html",
+    "sha256": "4af07f7c449149f7ca7263b7c007e1d082e277d04a163cd772a0091d50f5b10e",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_10_images_only_upload.html",
+    "fixture": "student_10_images_only_upload.html",
+    "sha256": "203590d772e049762b70b651d75238d0537576352c030593fd5ef94b92da70dd",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_11_once_submitted_detail.html",
+    "fixture": "student_11_once_submitted_detail.html",
+    "sha256": "ace025c1dd7c41bc64845d8dec7168c62433041a7493eeefc2e1a832f0463bba",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_11_once_submitted_overview.html",
+    "fixture": "student_07_uploaded_overview.html",
+    "sha256": "09e294a7cb28bb202dfe847d440db510ce15581cab65b82c758cb58a2c64b935",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_11_once_submitted_upload.html",
+    "fixture": "student_11_once_submitted_upload.html",
+    "sha256": "fe222f43c45b29b961b85311edba0f836f51bbb0bea39826b79bb06f85fb02d2",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_12_not_started_upload.html",
+    "fixture": "student_12_not_started_upload.html",
+    "sha256": "8751d839f502bcd13ba4c01a06beac61721f0d04c8932edbc479b6c6a73a6b3d",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_13_expired_detail.html",
+    "fixture": "student_13_expired_detail.html",
+    "sha256": "5e1378223dadc53e2ae08404700a4c83bb47ded75397ccbd55ba6dd34f3671ce",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_13_expired_overview.html",
+    "fixture": "student_07_uploaded_overview.html",
+    "sha256": "09e294a7cb28bb202dfe847d440db510ce15581cab65b82c758cb58a2c64b935",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_13_expired_upload.html",
+    "fixture": "student_13_expired_upload.html",
+    "sha256": "2d184603b51aca3da00faaa6e55ccd52468bed68033c695f7aad4ab11762a0b6",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_attendance_0_detail.html",
+    "fixture": "student_attendance_0_detail.html",
+    "sha256": "85a20bdca43c42868acb76aacb3d94261fd3187a0a0e97cb31cb70d1a2a37b89",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_attendance_0_overview.html",
+    "fixture": "student_attendance_0_overview.html",
+    "sha256": "cead5593f740f662127f17da693850de6239600bc73bee5b7582f1e48e3382bc",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_attendance_1_detail.html",
+    "fixture": "student_attendance_1_detail.html",
+    "sha256": "499a88aa2e39f2f5e01f29ff9dfedc068f1ed9bc1464903644fb22231d99adf0",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_attendance_1_overview.html",
+    "fixture": "student_attendance_1_overview.html",
+    "sha256": "df762a1fc608d272777ae4879af9f8ac42a076e389156352f7de64dc8991cdcd",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_attendance_2_detail.html",
+    "fixture": "student_attendance_2_detail.html",
+    "sha256": "7f7e096c10858803f0eac583efc697f824fe47e47353bf8dcaddb8b22882fd00",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_attendance_2_overview.html",
+    "fixture": "student_attendance_2_overview.html",
+    "sha256": "9dcc659dbfd44b095eb496c926d2ee838ddd44ab9ea805ce76ed2ebcb3b19be9",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_fuzz_rejected_txt_status.html",
+    "fixture": "student_fuzz_rejected_txt_status.html",
+    "sha256": "0f7f7f98d913673308e91497021fe80c930c26ec170c0c7740ae6349d1bf70e2",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_fuzz_student_txt_status.html",
+    "fixture": "student_fuzz_student_txt_status.html",
+    "sha256": "c2711a01679d741ad529db5a67908e37575da538d57290111ace6981e84d9efd",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_0_detail.html",
+    "fixture": "student_visibility_0_detail.html",
+    "sha256": "5a19d5e61d8ca70071ac635b31d12dfbd03e9d88d81cfe312a15d36db1044523",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_0_overview.html",
+    "fixture": "student_visibility_0_overview.html",
+    "sha256": "ab8a0aed682dc79c6f6786d075ff268ecf1ad20c0b0c73ad79961dd84d1a6318",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_1_detail.html",
+    "fixture": "student_visibility_1_detail.html",
+    "sha256": "0be0bed05a3910876483b20aaefa76b71426b2d0943b639a9f7aa9cf1ece7c60",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_1_overview.html",
+    "fixture": "student_visibility_1_overview.html",
+    "sha256": "439f5a20733689e0e4299017ba4df083c34d0220092e9322e5f186f1d9971d40",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_2_detail.html",
+    "fixture": "student_visibility_2_detail.html",
+    "sha256": "6200b2ecdfc2305df70e4e6d1a3ad61d149dcf94ca64c06ead112f6360652d97",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_2_overview.html",
+    "fixture": "student_visibility_2_overview.html",
+    "sha256": "a4c4fc89bbcc87ad4b7226d6aba47bd5a504203a1f2717fec714ca9b1b659d64",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_3_detail.html",
+    "fixture": "student_visibility_3_detail.html",
+    "sha256": "46e3319e78f83da1a2bf4b6959997ebe5cca64434383b32214853c5a6355ff99",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_3_overview.html",
+    "fixture": "student_visibility_3_overview.html",
+    "sha256": "f3c214293b3a81c6a5226b1add7a363f7da750491b8ac9381be6168f3cd79bee",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_4_detail.html",
+    "fixture": "student_visibility_4_detail.html",
+    "sha256": "9ff6cc827a006ebc22be0aa91403cd4664d2d391f7483862f10790ebf84fc229",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_4_overview.html",
+    "fixture": "student_visibility_4_overview.html",
+    "sha256": "6cbc025c4d07afdb74a245a87e007941bb00234a96a91d0c5821a0138de59294",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_5_detail.html",
+    "fixture": "student_visibility_5_detail.html",
+    "sha256": "210b1bd4441bbbea0fc7e7056d655c0dd2e5a7581c2797ecfe7c0c53a53b3c42",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_5_overview.html",
+    "fixture": "student_visibility_5_overview.html",
+    "sha256": "01c9a21616943290722a0ad4f31d80b9b7a4c527dea30ce8450c78fc04b80ca0",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_6_detail.html",
+    "fixture": "student_visibility_6_detail.html",
+    "sha256": "f612c896945c3a218ad24e09c68ee7a438f8e34fb28382a2ef81a8ad9f5f02ab",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_6_overview.html",
+    "fixture": "student_visibility_6_overview.html",
+    "sha256": "601796bab38474df406dd24f1bba64b29caeb705b7b508647e8605b53fc4e814",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_7_detail.html",
+    "fixture": "student_visibility_7_detail.html",
+    "sha256": "bee237984153a41e60f755205da05aa3102de592a3679751168174109cd07538",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  },
+  {
+    "source": "student_visibility_7_overview.html",
+    "fixture": "student_visibility_7_overview.html",
+    "sha256": "ab86abc4724c053fdb2b319ad35ee55a52fb6aa70ba13b6a6fa0fe0009f2bfd1",
+    "provenance": "live student view; scoped to test course; scripts/navigation and personal identifiers removed"
+  }
+]

@@ -31,10 +31,15 @@ class _Adapter implements HttpClientAdapter {
 }
 
 class _FailingCryptor extends Cryptor {
-  final failure = const FormatException(
-    'invalid encrypted conversation input',
-    'PRIVATE_CONVERSATION_CONTENT',
-  );
+  final Object failure;
+
+  _FailingCryptor([Object? failure])
+    : failure =
+          failure ??
+          const FormatException(
+            'invalid encrypted conversation input',
+            'PRIVATE_CONVERSATION_CONTENT',
+          );
   final origin = StackTrace.fromString('original cryptor stack');
 
   @override
@@ -133,7 +138,10 @@ void main() {
         fail('Malformed encrypted input must fail');
       } on UnknownException catch (error, stack) {
         expect(error.cause, 'FormatException');
-        expect(error.toString(), isNot(contains('PRIVATE_CONVERSATION_CONTENT')));
+        expect(
+          error.toString(),
+          isNot(contains('PRIVATE_CONVERSATION_CONTENT')),
+        );
         expect(stack.toString(), contains('original cryptor stack'));
       }
     },
@@ -146,5 +154,93 @@ void main() {
       parser.getSingleConversation('conversation'),
       throwsA(isA<NoConnectionException>()),
     );
+  });
+
+  test(
+    'calendar event failure includes details and the parsing stack',
+    () async {
+      final parser = CalendarParser(ctx, isConnected: () async => true);
+      addTearDown(parser.dispose);
+      try {
+        await parser.getEvent('event');
+        fail('Malformed event JSON must fail');
+      } on UnknownException catch (error, stack) {
+        expect(error, isA<LanisException>());
+        expect(error.cause, contains('FormatException'));
+        expect(error.cause, contains('Unexpected character'));
+        expect(stack.toString(), contains('CalendarParser.getEvent'));
+      }
+    },
+  );
+
+  test(
+    'lesson parsing failure includes details and its original location',
+    () async {
+      final parser = LessonsStudentParser(ctx, isConnected: () async => true);
+      addTearDown(parser.dispose);
+      try {
+        await parser.getUploadInfo(
+          'https://start.schulportal.hessen.de/upload',
+        );
+        fail('Missing upload sections must fail');
+      } on UnknownException catch (error, stack) {
+        expect(error, isA<LanisException>());
+        expect(error.cause, contains('Missing submission requirements'));
+        expect(error, isA<LanisException>());
+        expect(
+          stack.toString(),
+          contains('LessonsStudentParser.getUploadInfo'),
+        );
+      }
+    },
+  );
+
+  test(
+    'conversation boolean parsing retains error details and stack',
+    () async {
+      final parser = ConversationsParser(ctx, isConnected: () async => true);
+      addTearDown(parser.dispose);
+      try {
+        await parser.hideConversation('conversation');
+        fail('Invalid boolean response must fail');
+      } on UnknownException catch (error, stack) {
+        expect(error.cause, contains('FormatException'));
+        expect(error.cause, contains('Invalid boolean'));
+        expect(
+          stack.toString(),
+          contains('ConversationsParser.hideConversation'),
+        );
+      }
+    },
+  );
+
+  test('conversation refresh retains the original failure stack', () async {
+    final cryptor = _FailingCryptor(StateError('encryption unavailable'));
+    session.cryptor = cryptor;
+    final parser = ConversationsParser(ctx, isConnected: () async => true);
+    addTearDown(parser.dispose);
+    try {
+      await parser.refreshConversation('conversation', 0);
+      fail('Encryption failure must fail');
+    } on UnknownException catch (error, stack) {
+      expect(error.cause, contains('StateError'));
+      expect(error.cause, contains('encryption unavailable'));
+      expect(stack.toString(), cryptor.origin.toString());
+    }
+  });
+
+  test('existing Lanis exceptions retain their type and identity', () async {
+    final failure = UnauthorizedException('session expired');
+    final cryptor = _FailingCryptor(failure);
+    session.cryptor = cryptor;
+    final parser = ConversationsParser(ctx, isConnected: () async => true);
+    addTearDown(parser.dispose);
+    try {
+      await parser.refreshConversation('conversation', 0);
+      fail('Authorization failure must fail');
+    } on LanisException catch (error, stack) {
+      expect(error, same(failure));
+      expect(stack.toString(), cryptor.origin.toString());
+    }
   });
 }

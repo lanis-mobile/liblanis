@@ -1,0 +1,14 @@
+[
+  {
+    "fixture": "anonymized_course_detail.html",
+    "source": "export_fach_einzeln.txt",
+    "sha256": "706d80b415743268d04ff57bb5a60960a4bb1ddb87aa5f0e29d440076a30102d",
+    "provenance": "Anonymized user-provided debug-report response body. Navigation and scripts removed; teacher dropdown tag structure retained; names, IDs, dates, topics, homework, filenames and attendance values replaced."
+  },
+  {
+    "fixture": "anonymized_overview.html",
+    "source": "export_uebersicht.txt",
+    "sha256": "cab9cfb1ec650d7b0f78659323517f88025c382e6b4cd343670d596058a21131",
+    "provenance": "Anonymized user-provided debug-report response body. Navigation and scripts removed; teacher dropdown tag structure retained; names, IDs, dates, topics, homework, filenames and attendance values replaced."
+  }
+]
