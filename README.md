@@ -80,6 +80,7 @@ Access via `client.parsers` after login:
 | ---------------- | ------------------------- |
 | `substitutions`  | Vertretungsplan           |
 | `timetable`      | Stundenplan (student)     |
+| `timetableParent` | Stundenplan (parent)      |
 | `calendar`       | Kalender                  |
 | `conversations`  | Nachrichten               |
 | `lessonsStudent` | Mein Unterricht (student) |
@@ -134,6 +135,49 @@ Parent detail requests require a URL with a nonempty `p` parameter.
 Parent homework status comes from the overview's status labels.
 If a parent detail page contains no homework, `history` entries keep `homework: null`.
 The parser does not copy the latest overview homework into historical entries.
+
+### Parent timetable
+
+`TimetableParentParser.getHome()` returns the sealed `ParentTimetableHome` type.
+Its variants follow the portal's response:
+
+| Result | Contents | Requests |
+| --- | --- | --- |
+| `ParentTimetableSelection` | Child references in `timetables` | One overview request |
+| `ParentTimetableLoaded` | `pupilId` and a parsed `TimeTable` in `timetable` | Two requests when the portal redirects to a single child's plan |
+
+Each `ParentTimetableReference` contains `pupilId`, `pupilName`, `className`, and
+the portal's timetable `url`. A selection does not fetch any child's plan.
+
+```dart
+final parser = client.parsers.timetableParent;
+final home = await parser.getHome();
+switch (home) {
+	case ParentTimetableLoaded(:final pupilId, :final timetable):
+		print('$pupilId: ${timetable.weekBadge}');
+	case ParentTimetableSelection(:final timetables):
+		// After the user selects a reference:
+		if (timetables.isNotEmpty) {
+			final loaded = await parser.getTimetable(timetables.first);
+			print(loaded.pupilId);
+		}
+}
+```
+
+`getTimetable(reference)` makes one request and returns `ParentTimetableLoaded`.
+It preserves the pupil, class, and other URL parameters. Every loaded result
+carries its pupil ID, including when two children share the same class plan.
+The single-child flow obtains the ID from the portal's redirect without a
+separate child-discovery request.
+
+`forApplet('stundenplan.php')` selects the parent parser for parent accounts.
+Riverpod clients access it through `timetableParentParserProvider`.
+Support detection requires the timetable entry in the account's portal menu.
+The existing `timetable` getter and `timetableParserProvider` remain the student API.
+
+The standard `fetch()` flow caches either result variant for offline use.
+A cached selection retains its references, while a cached loaded result retains
+its pupil ID and parsed plan. Explicit `getTimetable()` calls require a connection.
 
 ## Flutter (Riverpod)
 

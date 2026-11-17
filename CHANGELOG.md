@@ -1,5 +1,9 @@
 ## Unreleased
 
+* Add `TimetableParentParser` with a sealed `ParentTimetableHome` result: a child selection or a loaded plan with its pupil ID. Follow single-child redirects and load selected plans through the shared timetable parser.
+* Enable parent timetable support when offered by the portal, select the parent parser in `EasyParsers`, and expose `timetableParentParserProvider`.
+* Cache both parent timetable result variants and add anonymized fixtures and regression tests for child selection, redirects, request counts, and offline restoration.
+
 * Add a read-only `LessonsParentParser` whose `getHome()` returns a complete `ParentLessonsOverview`, grouped by child, in one request. Course details load on demand.
 * Select the parent lessons parser in `EasyParsers` and expose `lessonsParentParserProvider` for Riverpod clients.
 * Parse parent course and attendance sections per child, expose `pupilId`, and preserve pupil and semester URL parameters.

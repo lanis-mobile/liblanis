@@ -155,6 +155,54 @@ final class TimetableParserProvider
 
 String _$timetableParserHash() => r'950c93a03b2fbe0a920bb7fd66073f1db1296bbf';
 
+@ProviderFor(timetableParentParser)
+const timetableParentParserProvider = TimetableParentParserProvider._();
+
+final class TimetableParentParserProvider
+    extends
+        $FunctionalProvider<
+          TimetableParentParser,
+          TimetableParentParser,
+          TimetableParentParser
+        >
+    with $Provider<TimetableParentParser> {
+  const TimetableParentParserProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'timetableParentParserProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$timetableParentParserHash();
+
+  @$internal
+  @override
+  $ProviderElement<TimetableParentParser> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  TimetableParentParser create(Ref ref) {
+    return timetableParentParser(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TimetableParentParser value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TimetableParentParser>(value),
+    );
+  }
+}
+
+String _$timetableParentParserHash() =>
+    r'fffb274e825617df946b56f036d1cfc5a6334c3b';
+
 @ProviderFor(calendarParser)
 const calendarParserProvider = CalendarParserProvider._();
 

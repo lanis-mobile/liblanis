@@ -10,6 +10,7 @@ import '../applets/lessons/teacher_parser.dart';
 import '../applets/study_groups/parser.dart';
 import '../applets/substitutions/parser.dart';
 import '../applets/timetable/parser.dart';
+import '../applets/timetable/parent_parser.dart';
 import '../exceptions.dart';
 import '../settings/typed_settings.dart';
 import 'core_providers.dart';
@@ -60,6 +61,14 @@ TimetableStudentParser timetableParser(Ref ref) {
     ctx,
     isConnected: () => _connected(ref),
   );
+  ref.onDispose(parser.dispose);
+  return parser;
+}
+
+@Riverpod(keepAlive: true)
+TimetableParentParser timetableParentParser(Ref ref) {
+  final ctx = ref.watch(appletContextProvider);
+  final parser = TimetableParentParser(ctx, isConnected: () => _connected(ref));
   ref.onDispose(parser.dispose);
   return parser;
 }

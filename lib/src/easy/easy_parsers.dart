@@ -11,6 +11,7 @@ import '../applets/lessons/teacher_parser.dart';
 import '../applets/study_groups/parser.dart';
 import '../applets/substitutions/parser.dart';
 import '../applets/timetable/parser.dart';
+import '../applets/timetable/parent_parser.dart';
 import '../exceptions.dart';
 
 /// Lazy registry of applet parsers for [EasyLanisClient].
@@ -20,6 +21,7 @@ class EasyParsers {
 
   SubstitutionsParser? _substitutions;
   TimetableStudentParser? _timetable;
+  TimetableParentParser? _timetableParent;
   CalendarParser? _calendar;
   ConversationsParser? _conversations;
   LessonsStudentParser? _lessonsStudent;
@@ -41,6 +43,9 @@ class EasyParsers {
 
   TimetableStudentParser get timetable =>
       _timetable ??= TimetableStudentParser(_ctx, isConnected: _isConnected);
+
+  TimetableParentParser get timetableParent => _timetableParent ??=
+      TimetableParentParser(_ctx, isConnected: _isConnected);
 
   CalendarParser get calendar =>
       _calendar ??= CalendarParser(_ctx, isConnected: _isConnected);
@@ -74,6 +79,11 @@ class EasyParsers {
       if (type == AccountType.parent) return lessonsParent;
       return lessonsStudent;
     }
+    if (phpUrl == Applets.timetable.appletPhpUrl &&
+        (_ctx.account.accountType ?? _ctx.session.accountTypeOrNull) ==
+            AccountType.parent) {
+      return timetableParent;
+    }
     return switch (phpUrl) {
       'vertretungsplan.php' => substitutions,
       'stundenplan.php' => timetable,
@@ -88,6 +98,7 @@ class EasyParsers {
   void disposeAll() {
     _substitutions?.dispose();
     _timetable?.dispose();
+    _timetableParent?.dispose();
     _calendar?.dispose();
     _conversations?.dispose();
     _lessonsStudent?.dispose();
@@ -97,6 +108,7 @@ class EasyParsers {
     _studyGroups?.dispose();
     _substitutions = null;
     _timetable = null;
+    _timetableParent = null;
     _calendar = null;
     _conversations = null;
     _lessonsStudent = null;
