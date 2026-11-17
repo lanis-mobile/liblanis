@@ -83,12 +83,57 @@ Access via `client.parsers` after login:
 | `calendar`       | Kalender                  |
 | `conversations`  | Nachrichten               |
 | `lessonsStudent` | Mein Unterricht (student) |
+| `lessonsParent`  | Mein Unterricht (parent)  |
 | `lessonsTeacher` | Mein Unterricht (teacher) |
 | `dataStorage`    | Dateispeicher             |
 | `studyGroups`    | Lerngruppen               |
 
 
 Generic access for smoke tests: `client.parsers.forApplet('kalender.php')`.
+
+### Parent lessons
+
+`LessonsParentParser` provides a read-only API for parent accounts.
+`forApplet('meinunterricht.php')` selects this parser for a parent account.
+Riverpod clients access it through `lessonsParentParserProvider`.
+
+| Method | Result | Requests per call |
+| --- | --- | --- |
+| `getHome()` | `ParentLessonsOverview` with every child and their parsed courses | One overview request |
+| `getDetailedCourseView(course.courseURL.toString())` | One course's history, marks, exams, and attendance | One course request |
+
+`getHome()` parses the complete parent page once. Its `lessonsByPupil` property
+is a `Map<LessonPupil, Lessons>`, including children whose course lists are empty.
+Each key contains the child's `id` and `name`. Each value contains that child's
+parsed course overview. Selecting a child uses this map without another request.
+The parser never loads course details automatically.
+
+```dart
+final parser = client.parsers.lessonsParent;
+final overview = await parser.getHome();
+for (final entry in overview.lessonsByPupil.entries) {
+	final child = entry.key;
+	final courses = entry.value;
+	print('${child.name}: ${courses.length} courses');
+}
+// After the user selects a child and opens a course:
+final courses = overview.lessonsByPupil.values.first;
+if (courses.isNotEmpty) {
+	final detail = await parser.getDetailedCourseView(
+		courses.first.courseURL.toString(),
+	);
+}
+```
+
+`Lesson.pupilId` and `DetailedLesson.pupilId` identify the child.
+Use the pupil ID together with the course ID when storing parent courses.
+Several children can share a course ID.
+`courseURL` preserves the portal's `p` and semester parameters, while `courseID` contains only the course ID.
+Parent detail requests require a URL with a nonempty `p` parameter.
+
+Parent homework status comes from the overview's status labels.
+If a parent detail page contains no homework, `history` entries keep `homework: null`.
+The parser does not copy the latest overview homework into historical entries.
 
 ## Flutter (Riverpod)
 

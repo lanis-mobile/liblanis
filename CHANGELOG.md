@@ -1,3 +1,11 @@
+## Unreleased
+
+* Add a read-only `LessonsParentParser` whose `getHome()` returns a complete `ParentLessonsOverview`, grouped by child, in one request. Course details load on demand.
+* Select the parent lessons parser in `EasyParsers` and expose `lessonsParentParserProvider` for Riverpod clients.
+* Parse parent course and attendance sections per child, expose `pupilId`, and preserve pupil and semester URL parameters.
+* Read parent homework status labels so open homework remains open without a student checkbox.
+* Add anonymized parent overview fixtures from live one-child and two-child tests, plus regression coverage for pupil isolation and request counts.
+
 ## 0.1.5
 
 * Parse older student course folders and expose `Lesson.isOlder`, with a default of `false`. Preserve semester parameters in course URLs.

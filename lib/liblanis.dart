@@ -11,6 +11,7 @@ export 'src/applets/calendar/parser.dart';
 export 'src/applets/conversations/parser.dart';
 export 'src/applets/data_storage/parser.dart';
 export 'src/applets/lessons/student_parser.dart';
+export 'src/applets/lessons/parent_parser.dart';
 export 'src/applets/lessons/teacher_parser.dart';
 export 'src/applets/study_groups/parser.dart';
 export 'src/applets/substitutions/parser.dart';

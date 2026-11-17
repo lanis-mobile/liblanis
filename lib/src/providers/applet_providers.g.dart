@@ -292,6 +292,54 @@ final class LessonsStudentParserProvider
 String _$lessonsStudentParserHash() =>
     r'47dec66b6e12c0d8e459d9df8258aaa6ee738d74';
 
+@ProviderFor(lessonsParentParser)
+const lessonsParentParserProvider = LessonsParentParserProvider._();
+
+final class LessonsParentParserProvider
+    extends
+        $FunctionalProvider<
+          LessonsParentParser,
+          LessonsParentParser,
+          LessonsParentParser
+        >
+    with $Provider<LessonsParentParser> {
+  const LessonsParentParserProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'lessonsParentParserProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$lessonsParentParserHash();
+
+  @$internal
+  @override
+  $ProviderElement<LessonsParentParser> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  LessonsParentParser create(Ref ref) {
+    return lessonsParentParser(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LessonsParentParser value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LessonsParentParser>(value),
+    );
+  }
+}
+
+String _$lessonsParentParserHash() =>
+    r'2699d74c7e95e59286a09167c326b58e001c13ba';
+
 @ProviderFor(lessonsTeacherParser)
 const lessonsTeacherParserProvider = LessonsTeacherParserProvider._();
 

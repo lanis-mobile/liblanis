@@ -5,6 +5,7 @@ import '../applets/calendar/parser.dart';
 import '../applets/conversations/parser.dart';
 import '../applets/data_storage/parser.dart';
 import '../applets/lessons/student_parser.dart';
+import '../applets/lessons/parent_parser.dart';
 import '../applets/lessons/teacher_parser.dart';
 import '../applets/study_groups/parser.dart';
 import '../applets/substitutions/parser.dart';
@@ -46,10 +47,7 @@ Future<bool> _connected(Ref ref) =>
 @Riverpod(keepAlive: true)
 SubstitutionsParser substitutionsParser(Ref ref) {
   final ctx = ref.watch(appletContextProvider);
-  final parser = SubstitutionsParser(
-    ctx,
-    isConnected: () => _connected(ref),
-  );
+  final parser = SubstitutionsParser(ctx, isConnected: () => _connected(ref));
   parser.loadFilterFromStorage();
   ref.onDispose(parser.dispose);
   return parser;
@@ -86,6 +84,14 @@ ConversationsParser conversationsParser(Ref ref) {
 LessonsStudentParser lessonsStudentParser(Ref ref) {
   final ctx = ref.watch(appletContextProvider);
   final parser = LessonsStudentParser(ctx, isConnected: () => _connected(ref));
+  ref.onDispose(parser.dispose);
+  return parser;
+}
+
+@Riverpod(keepAlive: true)
+LessonsParentParser lessonsParentParser(Ref ref) {
+  final ctx = ref.watch(appletContextProvider);
+  final parser = LessonsParentParser(ctx, isConnected: () => _connected(ref));
   ref.onDispose(parser.dispose);
   return parser;
 }

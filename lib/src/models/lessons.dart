@@ -2,7 +2,25 @@ import 'file_info.dart';
 
 typedef Lessons = List<Lesson>;
 
+/// A child available in the parent account's lessons overview.
+class LessonPupil {
+  final String id;
+  final String name;
+
+  const LessonPupil({required this.id, required this.name});
+}
+
+/// The complete parent lessons page, grouped by child.
+class ParentLessonsOverview {
+  final Map<LessonPupil, Lessons> lessonsByPupil;
+
+  ParentLessonsOverview({required Map<LessonPupil, Lessons> lessonsByPupil})
+    : lessonsByPupil = Map.unmodifiable(lessonsByPupil);
+}
+
 class Lesson {
+  /// The pupil owning this course, or null for a student account.
+  final String? pupilId;
   String courseID;
   String name;
   Uri courseURL;
@@ -15,6 +33,7 @@ class Lesson {
 
   Lesson({
     required this.courseID,
+    this.pupilId,
     required this.name,
     required this.teachers,
     required this.courseURL,
@@ -32,6 +51,8 @@ class LessonTeacher {
 }
 
 class DetailedLesson {
+  /// The pupil owning this course, or null for a student account.
+  final String? pupilId;
   String courseID;
   String name;
   List<LessonTeacher> teachers;
@@ -43,6 +64,7 @@ class DetailedLesson {
 
   DetailedLesson({
     required this.courseID,
+    this.pupilId,
     required this.name,
     required this.teachers,
     required this.history,
