@@ -1,0 +1,8 @@
+builders:
+  cache:
+    import: "package:liblanis_cache_generator/builder.dart"
+    builder_factories: ["cacheBuilder"]
+    build_extensions: {".dart": [".cache.g.part"]}
+    auto_apply: dependents
+    build_to: cache
+    applies_builders: ["source_gen|combining_builder"]

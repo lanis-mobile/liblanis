@@ -224,7 +224,7 @@ void main() {
         isConnected: () async => false,
       );
       addTearDown(offline.dispose);
-      await offline.fetchData();
+      await offline.fetchCachedData(policy: CacheReadPolicy.cacheOnly);
       expect(offline.latestResponse!.contentStatus, ContentStatus.offline);
       final restored =
           offline.latestResponse!.content! as ParentTimetableLoaded;
@@ -386,7 +386,7 @@ void main() {
         await expectLater(
           operation(),
           throwsA(
-            isA<UnknownException>().having(
+            isA<NetworkException>().having(
               (error) => error.cause,
               'cause',
               contains('fixture transport failure'),
@@ -447,9 +447,8 @@ void main() {
             .timetables,
         hasLength(2),
       );
-      final cached = database.getAppletOfflineData(
-        accountId: context.accountId,
-        appletId: Applets.timetable.appletPhpUrl,
+      final cached = database.readCacheRecord(
+        TimetableParentParserCacheRequests.getHome().keyFor(context.accountId),
       )!;
       expect(jsonDecode(cached.json)['timetables'], hasLength(2));
       final offline = TimetableParentParser(
@@ -457,7 +456,7 @@ void main() {
         isConnected: () async => false,
       );
       addTearDown(offline.dispose);
-      await offline.fetchData();
+      await offline.fetchCachedData(policy: CacheReadPolicy.cacheOnly);
       expect(offline.latestResponse!.contentStatus, ContentStatus.offline);
       final restored =
           (offline.latestResponse!.content! as ParentTimetableSelection)

@@ -1,5 +1,25 @@
 ## Unreleased
 
+* Separate refresh cadence from offline retention: default applet snapshots remain
+  available for seven days, with their original fetch dates preserved.
+* Recognize native HTTP transport errors and transient gateway failures for cache
+  fallback. Keep loaded data during failed foreground refreshes, without treating
+  authentication or parsing failures as successful cache hits.
+* Migrate existing timetable/substitution deadlines once and retain already-loaded
+  legacy applet data on transport failure without attempting a new login.
+
+* Parse parent course-detail homework marked by a home icon without student
+  completion controls, so the app can show its homework box. Read detail
+  completion status only from that response; do not transfer overview status.
+
+* Add `@Cacheable`, generated cached companions, detached typed cache requests,
+  `MaybeCacheResult`, and session-independent availability and cache-only reads.
+* Persist versioned per-account results with hard expiry and guarded writes after
+  cache clearing, including across database connections.
+* Migrate timetable homes, parent child plans, and unfiltered substitutions to the
+  generic cache. Preserve metadata through nested cached reads and fall back only
+  on offline or transport failures.
+
 * Add `TimetableParentParser` with a sealed `ParentTimetableHome` result: a child selection or a loaded plan with its pupil ID. Follow single-child redirects and load selected plans through the shared timetable parser.
 * Enable parent timetable support when offered by the portal, select the parent parser in `EasyParsers`, and expose `timetableParentParserProvider`.
 * Cache both parent timetable result variants and add anonymized fixtures and regression tests for child selection, redirects, request counts, and offline restoration.

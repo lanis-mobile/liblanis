@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../applets/applet_context.dart';
 import '../applets/definition.dart';
 import '../config.dart';
+import '../cache/service.dart';
 import '../connection/connection_checker.dart';
 import '../database/database.dart';
 import '../exceptions.dart';
@@ -28,10 +29,10 @@ class EasyLanisClient {
     required LanisDatabase db,
     required bool ephemeral,
     ClearTextAccount? ephemeralAccount,
-  })  : _config = config,
-        _db = db,
-        _ephemeral = ephemeral,
-        _ephemeralAccount = ephemeralAccount {
+  }) : _config = config,
+       _db = db,
+       _ephemeral = ephemeral,
+       _ephemeralAccount = ephemeralAccount {
     _connection = ConnectionChecker(httpAdapter: config.httpAdapter);
     _accounts = EasyAccounts(
       db: ephemeral ? null : db,
@@ -81,11 +82,7 @@ class EasyLanisClient {
       path: config.databasePath,
       secretStore: config.secretStore,
     );
-    return EasyLanisClient._(
-      config: config,
-      db: db,
-      ephemeral: false,
-    );
+    return EasyLanisClient._(config: config, db: db, ephemeral: false);
   }
 
   /// Persistent file database (CLI tools, other apps).
@@ -116,11 +113,7 @@ class EasyLanisClient {
       path: config.databasePath,
       secretStore: config.secretStore,
     );
-    return EasyLanisClient._(
-      config: config,
-      db: db,
-      ephemeral: false,
-    );
+    return EasyLanisClient._(config: config, db: db, ephemeral: false);
   }
 
   /// Credentials in memory only — no persistent accounts (smoke tests).
@@ -178,15 +171,15 @@ class EasyLanisClient {
     );
   }
 
+  CacheService get cache => CacheService.shared(_db);
+
   bool get isAuthenticated => _authenticated;
 
   LanisSession? get session => _session;
 
   EasyParsers get parsers {
     if (_parsers == null) {
-      throw ConfigurationException(
-        'Login required before accessing parsers',
-      );
+      throw ConfigurationException('Login required before accessing parsers');
     }
     return _parsers!;
   }

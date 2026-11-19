@@ -14,6 +14,13 @@ class TypedSettings {
        _write = write,
        _delete = delete;
 
+  /// Share storage while keeping every setting inside a separate namespace.
+  TypedSettings scoped(String prefix) => TypedSettings(
+    read: (key) => _read('$prefix$key'),
+    write: (key, value) => _write('$prefix$key', value),
+    delete: (key) => _delete('$prefix$key'),
+  );
+
   factory TypedSettings.shared(LanisDatabase db) {
     return TypedSettings(
       read: db.getSharedSetting,

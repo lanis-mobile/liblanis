@@ -15,7 +15,7 @@ Published on [pub.dev](https://pub.dev/packages/liblanis). Also used as a submod
 - Optional Riverpod multi-account registry for Flutter apps
 - Optional single SQLite database (file or in-memory)
 - `sharedOverAccountSettings` and `accountSpecificSettings` with typed helpers
-- Offline applet snapshots table (substitutions & timetable write in v1; API is generic)
+- Typed, account-scoped offline caching with generated request descriptors and availability checks
 - Configurable `StorageManager` (caller supplies cache directory)
 
 ## Install
@@ -307,3 +307,98 @@ dart analyze
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).
+
+## Typed offline cache (unreleased)
+
+Timetable and substitution parsers expose a generated `cached` companion.
+Existing direct methods retain their plain return types; use the companion when
+you need caching and response metadata:
+
+```dart
+final parser = client.parsers.timetable;
+final result = await parser.cached.getHome();
+// result.data, result.cacheStatus, result.fetchedAt, result.responseAt,
+// result.expiresAt
+```
+
+Use the concrete parser instance appropriate for the account. Parent timetables
+support `parser.cached.getHome()` and `parser.cached.getTimetable(reference)`.
+The home and individual timetable are independent cache operations.
+
+Availability and cache-only reads do not need a parser, session, or connectivity
+check. Construct a generated request with the same arguments as the read:
+
+```dart
+final request = TimetableParentParserCacheRequests.getTimetable(reference);
+final available = await cache.isCacheAvailableFor(
+  accountId: accountId,
+  request: request,
+);
+final result = await cache.readCacheFor(
+  accountId: accountId,
+  request: request,
+);
+```
+
+Here `cache` is `client.cache`, `CacheService.shared(database)`, or the value of
+`cacheServiceProvider`. `inspectCacheFor` also distinguishes missing, expired,
+incompatible, and corrupt entries. A successful availability check is a snapshot;
+a later read can still fail if the entry expires or is cleared.
+
+The default policy tries the network and falls back only for offline or transport
+failures. Authentication and parsing errors propagate. Pass
+`cachePolicy: CacheReadPolicy.cacheOnly` or use `readCacheFor` for explicit offline
+browsing. Cache reads do not authenticate an account. `networkOnly` propagates
+through nested reads and disables fallback. Results always include their fetch
+and response timestamps. Nested results preserve the oldest fetch time and the
+earliest expiry; any cached dependency marks the combined result as cached.
+
+The applet refresh interval controls refresh cadence: one hour for timetables
+and ten minutes for substitutions. Cached results remain available offline for
+seven days unless an operation explicitly sets a shorter `maxAge`. `refreshInterval`
+and `maxAge` are separate request properties. At the retention deadline, entries
+become unavailable; reading or displaying them does not extend their lifetime. Successful null results are returned but
+not stored, and remove the previous exact entry. Empty collections are cacheable.
+Substitutions are stored unfiltered and projected through account settings after
+reading. Cache keys include account, operation, version, and canonical arguments.
+
+`cache.clear(accountId: accountId)` clears that account's generic and legacy
+snapshots. Omit the account for a global clear. Persistent generation counters
+prevent requests already running in another database connection from repopulating
+a cleared cache. Online writes do not yet invalidate related read operations.
+
+### Add a cacheable read
+
+The development generator lives in `packages/liblanis_cache_generator`. Add it as
+a dev dependency alongside `build_runner`, import the public cache types, declare
+a part, and apply the generated mixin:
+
+```dart
+part 'example.g.dart';
+
+class Example with _$ExampleCache implements CacheHost {
+  @override
+  final CacheService cacheService;
+  @override
+  final int cacheAccountId;
+
+  Example(this.cacheService, this.cacheAccountId);
+
+  @Cacheable(operation: 'example.items', maxAge: Duration(minutes: 10))
+  Future<List<String>> _items({required int page}) async => fetchItems(page);
+}
+```
+
+Run `dart run build_runner build`. Call `example.cached.items(page: 1)` and use
+`ExampleCacheRequests.items(page: 1)` for detached availability or offline reads.
+Applet parsers already implement `CacheHost`; set `applet: Applets.timetable`,
+for example, to inherit its refresh limit. Keep annotated methods private so
+callers deliberately choose the cached companion or an existing plain API.
+
+The generator supports primitives, nullable values, lists, string-keyed maps,
+DateTime, Uri, enums, and models with `toJson`/`fromJson`. It rejects unsupported
+signatures during generation, including callbacks, method or owner generics,
+optional positional parameters, and the reserved `cachePolicy` parameter.
+Increase the operation version when changing payload compatibility. This first
+migration covers timetables and substitutions; other applets retain their existing
+behavior until migrated. See [the migration plan](OFFLINE_CACHE_MIGRATION.md).

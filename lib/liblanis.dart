@@ -41,3 +41,10 @@ export 'src/session/session.dart';
 export 'src/settings/typed_settings.dart';
 export 'src/lanis_client.dart';
 export 'src/storage/storage_manager.dart';
+
+export 'src/cache/types.dart';
+export 'src/cache/store.dart';
+export 'src/cache/service.dart';
+export 'src/cache/annotation.dart';
+export 'src/cache/catalog.dart';
+export 'src/providers/cache_providers.dart';

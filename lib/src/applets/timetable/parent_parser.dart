@@ -8,10 +8,16 @@ import '../../models/timetable_parent.dart';
 import '../applet_context.dart';
 import '../applet_parser.dart';
 import '../definition.dart';
+import '../../cache/annotation.dart';
+import '../../cache/types.dart';
+import '../../cache/service.dart';
 import 'parser.dart';
 
+part 'parent_parser.g.dart';
+
 /// Parent timetable overview and explicit loading of an individual child's plan.
-class TimetableParentParser extends AppletParser<ParentTimetableHome> {
+class TimetableParentParser extends AppletParser<ParentTimetableHome>
+    with _$TimetableParentParserCache {
   static final _base = Uri.parse('https://start.schulportal.hessen.de/');
 
   TimetableParentParser(
@@ -23,6 +29,23 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome> {
          isConnected:
              isConnected ?? () => ctx.session.connectionChecker.connected,
        );
+
+  @override
+  CacheRequest<ParentTimetableHome> get homeCacheRequest =>
+      TimetableParentParserCacheRequests.getHome();
+
+  @override
+  Future<MaybeCacheResult<ParentTimetableHome>> loadCachedHome({
+    CacheReadPolicy? policy,
+  }) => cached.getHome(cachePolicy: policy);
+
+  @Cacheable(operation: 'timetable.parent.home', applet: Applets.timetable)
+  Future<ParentTimetableHome> _getHome() => getHome();
+
+  @Cacheable(operation: 'timetable.parent.plan', applet: Applets.timetable)
+  Future<ParentTimetableLoaded> _getTimetable(
+    ParentTimetableReference reference,
+  ) => getTimetable(reference);
 
   /// Return a selection, or follow the single-child redirect and load its plan.
   /// A selection takes one request. A redirected plan takes two.
@@ -49,6 +72,12 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome> {
       return parseSelectionDocument(document);
     } catch (error, stack) {
       if (error is LanisException) rethrow;
+      if (CacheService.isTransportFailure(error)) {
+        Error.throwWithStackTrace(
+          NetworkException.fromError(error, stack),
+          stack,
+        );
+      }
       Error.throwWithStackTrace(
         UnknownException(
           'Parent timetable overview: ${error.runtimeType}: $error',
@@ -96,6 +125,12 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome> {
       return ParentTimetableSelection(timetables: references);
     } catch (error, stack) {
       if (error is LanisException) rethrow;
+      if (CacheService.isTransportFailure(error)) {
+        Error.throwWithStackTrace(
+          NetworkException.fromError(error, stack),
+          stack,
+        );
+      }
       Error.throwWithStackTrace(
         UnknownException(
           'Parent timetable overview: ${error.runtimeType}: $error',
@@ -119,6 +154,12 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome> {
       );
     } catch (error, stack) {
       if (error is LanisException) rethrow;
+      if (CacheService.isTransportFailure(error)) {
+        Error.throwWithStackTrace(
+          NetworkException.fromError(error, stack),
+          stack,
+        );
+      }
       Error.throwWithStackTrace(
         UnknownException(
           'Parent timetable detail: ${error.runtimeType}: $error',

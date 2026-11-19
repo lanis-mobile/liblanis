@@ -44,3 +44,9 @@ export 'src/easy/easy_connection.dart';
 export 'src/easy/easy_lanis_client.dart';
 export 'src/easy/easy_parsers.dart';
 export 'src/easy/easy_settings.dart';
+
+export 'src/cache/types.dart';
+export 'src/cache/store.dart';
+export 'src/cache/service.dart';
+export 'src/cache/annotation.dart';
+export 'src/cache/catalog.dart';

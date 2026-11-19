@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../cache/service.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -53,16 +54,24 @@ class LanisSession {
     dio.interceptors.add(
       InterceptorsWrapper(
         onResponse: (response, handler) {
-          if (response.data != null) {
+          if (response.data != null && response.statusCode != 503) {
             connectionChecker.status = ConnectionStatus.connected;
           } else {
             connectionChecker.status = ConnectionStatus.disconnected;
           }
+          if (response.statusCode == 503) {
+            return handler.reject(
+              DioException.badResponse(
+                statusCode: 503,
+                requestOptions: response.requestOptions,
+                response: response,
+              ),
+            );
+          }
           return handler.next(response);
         },
         onError: (error, handler) {
-          if (error.type == DioExceptionType.connectionTimeout ||
-              error.type == DioExceptionType.receiveTimeout) {
+          if (CacheService.isTransportFailure(error)) {
             connectionChecker.status = ConnectionStatus.disconnected;
           }
           return handler.next(error);
@@ -92,6 +101,7 @@ class LanisSession {
     );
     dio.options.followRedirects = false;
     dio.options.connectTimeout = const Duration(seconds: 8);
+    dio.options.receiveTimeout = const Duration(seconds: 8);
     dio.options.validateStatus = (status) =>
         status != null && (status == 200 || status == 302 || status == 503);
   }
@@ -119,11 +129,8 @@ class LanisSession {
     } on LanisException {
       rethrow;
     } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw NoConnectionException();
-      }
+      if (e.response?.statusCode == 503) throw LanisDownException();
+      if (CacheService.isTransportFailure(e)) throw NoConnectionException();
       throw UnknownException(e.message ?? e.toString());
     } finally {
       _authentication = null;

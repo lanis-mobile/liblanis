@@ -82,7 +82,9 @@ class LessonsParentParser extends AppletParser<ParentLessonsOverview> {
   }
 
   /// Load exactly one parent course URL, including its `p` query parameter.
-  /// Homework absent from parent detail HTML remains absent; use the overview.
+  /// Visible homework is parsed with or without student completion controls.
+  /// Completion status is taken only from the detail response.
+  /// Homework absent from the detail HTML remains absent.
   Future<DetailedLesson> getDetailedCourseView(
     String url, {
     bool force = false,

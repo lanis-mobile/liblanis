@@ -46,6 +46,9 @@ final class ParentTimetableLoaded extends ParentTimetableHome {
 
   const ParentTimetableLoaded({required this.pupilId, required this.timetable});
 
+  factory ParentTimetableLoaded.fromJson(Map<String, dynamic> json) =>
+      ParentTimetableHome.fromJson(json) as ParentTimetableLoaded;
+
   @override
   Map<String, dynamic> toJson() => {
     'type': 'loaded',

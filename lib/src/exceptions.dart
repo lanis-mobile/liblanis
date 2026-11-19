@@ -53,7 +53,15 @@ class CredentialsIncompleteException extends LanisException {
 }
 
 class NetworkException extends LanisException {
-  NetworkException([super.cause]);
+  final Object? originalError;
+  final StackTrace? originalStack;
+
+  NetworkException([super.cause]) : originalError = null, originalStack = null;
+
+  NetworkException.fromError(Object error, StackTrace stack)
+    : originalError = error,
+      originalStack = stack,
+      super('${error.runtimeType}: $error');
 
   @override
   String get defaultMessage => 'Network error';

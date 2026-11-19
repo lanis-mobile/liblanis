@@ -126,10 +126,14 @@ class LessonsStudentParser extends AppletParser<Lessons> {
           .trim();
 
       String? homework = tableRow.children[1]
-          .querySelector("span.homework + br + span.markup")
+          .querySelector(
+            'span.homework + br + span.markup, '
+            'i.fa-home + br + span.markup',
+          )
           ?.text
           .trim();
-      bool homeworkDone = tableRow.querySelectorAll("span.done.hidden").isEmpty;
+      final homeworkDone =
+          tableRow.querySelector('span.done:not(.hidden)') != null;
 
       List<FileInfo> files = [];
       if (tableRow.children[1].querySelector("div.alert.alert-info") != null) {

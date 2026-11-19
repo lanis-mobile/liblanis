@@ -5,21 +5,20 @@ import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 
 import '../../exceptions.dart';
+import '../../cache/service.dart';
 import '../../models/calendar_event.dart';
 import '../applet_context.dart';
 import '../applet_parser.dart';
 import '../definition.dart';
 
 class CalendarParser extends AppletParser<List<CalendarEvent>> {
-  CalendarParser(
-    AppletContext ctx, {
-    Future<bool> Function()? isConnected,
-  }) : super(
-         ctx,
-         Applets.calendar,
-         isConnected:
-             isConnected ?? () => ctx.session.connectionChecker.connected,
-       );
+  CalendarParser(AppletContext ctx, {Future<bool> Function()? isConnected})
+    : super(
+        ctx,
+        Applets.calendar,
+        isConnected:
+            isConnected ?? () => ctx.session.connectionChecker.connected,
+      );
 
   @override
   Future<List<CalendarEvent>> getHome() async {
@@ -149,10 +148,20 @@ class CalendarParser extends AppletParser<List<CalendarEvent>> {
       );
 
       return parseEventsJson('${response.data}', categories);
-    } on SocketException {
-      throw NetworkException();
+    } on SocketException catch (error, stack) {
+      Error.throwWithStackTrace(
+        NetworkException.fromError(error, stack),
+        stack,
+      );
     } catch (e, stack) {
-      Error.throwWithStackTrace(UnknownException(e.runtimeType.toString()), stack);
+      if (e is LanisException) rethrow;
+      if (CacheService.isTransportFailure(e)) {
+        Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
+      }
+      Error.throwWithStackTrace(
+        UnknownException(e.runtimeType.toString()),
+        stack,
+      );
     }
   }
 

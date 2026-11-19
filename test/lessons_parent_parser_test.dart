@@ -69,6 +69,9 @@ class _Context implements AppletContext {
 }
 
 class _Adapter implements HttpClientAdapter {
+  final String? overviewHtml;
+  final String detailHtml;
+  _Adapter({this.overviewHtml, this.detailHtml = parentDetail});
   final requests = <RequestOptions>[];
   @override
   Future<ResponseBody> fetch(
@@ -82,8 +85,9 @@ class _Adapter implements HttpClientAdapter {
     }
     return ResponseBody.fromString(
       options.uri.queryParameters['a'] == 'sus_view'
-          ? parentDetail
-          : File('$fixtures/two_pupils_overview.html').readAsStringSync(),
+          ? detailHtml
+          : overviewHtml ??
+                File('$fixtures/two_pupils_overview.html').readAsStringSync(),
       200,
     );
   }
@@ -234,6 +238,81 @@ void main() {
     doc.querySelector('[id^="anwesend"]')!.remove();
     expect(allCourses(doc).map((c) => c.attendances), everyElement(isNull));
   });
+
+  test(
+    'parent detail homework without student controls reaches its own field',
+    () {
+      final doc = parse(
+        parentDetail.replaceFirst(
+          '<td><b>Test topic</b></td>',
+          '<td><b>Test topic</b><br>'
+              '<span class="markup"><i class="far fa-comment-alt"></i>Lesson description</span>'
+              '<br><br><i class="fas fa-home"></i><br>'
+              '<span class="markup">Read chapter 3</span></td>',
+        ),
+      );
+      final detail = LessonsStudentParser.parseDetailedDocument(
+        doc,
+        courseID: '1001',
+        pupilId: '101',
+      );
+      final entry = detail.history.single;
+      expect(entry.description, 'Lesson description');
+      expect(entry.homework?.description, 'Read chapter 3');
+      expect(entry.homework?.homeWorkDone, isFalse);
+    },
+  );
+
+  for (final done in [false, true]) {
+    test('detail homework completion requires a visible done marker ($done)', () {
+      final doc = parse(
+        parentDetail.replaceFirst(
+          '<td><b>Test topic</b></td>',
+          '<td><b>Test topic</b><br><i class="fas fa-home"></i>'
+              '<span class="homework"><span class="done${done ? '' : ' hidden'}">Done</span></span>'
+              '<br><span class="markup">Homework with controls</span></td>',
+        ),
+      );
+      final entry = LessonsStudentParser.parseDetailedDocument(
+        doc,
+        courseID: '1001',
+        pupilId: '101',
+      ).history.single;
+      expect(entry.homework?.description, 'Homework with controls');
+      expect(entry.homework?.homeWorkDone, done);
+    });
+  }
+
+  for (final done in [false, true]) {
+    test('parent detail ignores the overview completion status: $done', () async {
+      final document = overview('two_pupils');
+      final label = document.querySelector(
+        '#aktuell101 tr[data-entry="201"] .homework .done',
+      )!;
+      label.classes.remove('label-warning');
+      label.classes.add(done ? 'label-success' : 'label-warning');
+      label.text = done ? 'erledigt' : 'offen';
+      final html = parentDetail.replaceFirst(
+        '<td><b>Test topic</b></td>',
+        '<td><b>Test topic</b><br><i class="fas fa-home"></i><br><span class="markup">Homework</span></td>',
+      );
+      final adapter = _Adapter(
+        overviewHtml: document.outerHtml,
+        detailHtml: html,
+      );
+      final parser = LessonsParentParser(
+        _Context(adapter),
+        isConnected: () async => true,
+      );
+      addTearDown(parser.dispose);
+      await parser.getHome();
+      final detail = await parser.getDetailedCourseView(
+        'meinunterricht.php?a=sus_view&id=1001&p=101',
+      );
+      expect(detail.history.single.homework!.homeWorkDone, isFalse);
+      expect(adapter.requests, hasLength(2));
+    });
+  }
 
   test(
     'one overview request returns all children and courses before a detail request',
