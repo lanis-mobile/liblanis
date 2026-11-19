@@ -181,8 +181,27 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome>
     }
     return ParentTimetableLoaded(
       pupilId: pupilId,
+      pupilName: _pupilName(document, pupilId),
       timetable: TimetableStudentParser.parseDocumentHtml(document),
     );
+  }
+
+  static String? _pupilName(Document document, String pupilId) {
+    for (final link in document.querySelectorAll('a[href]')) {
+      final url = _base.resolve(link.attributes['href']!);
+      if (url.path != '/stundenplan.php' ||
+          url.queryParameters['a'] != 'detail_klasse' ||
+          url.queryParameters['p'] != pupilId ||
+          url.queryParameters.containsKey('pdf')) {
+        continue;
+      }
+      final label = link.text.replaceAll(RegExp(r'\s+'), ' ').trim();
+      final classStart = label.lastIndexOf(' (');
+      if (classStart > 0 && label.endsWith(')')) {
+        return label.substring(0, classStart).trim();
+      }
+    }
+    return null;
   }
 
   static String _pupilId(Uri source, Document document) {

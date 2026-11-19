@@ -19,6 +19,7 @@ sealed class ParentTimetableHome {
     ),
     'loaded' => ParentTimetableLoaded(
       pupilId: json['pupilId'] as String,
+      pupilName: json['pupilName'] as String?,
       timetable: TimeTable.fromJson(json['timetable'] as Map<String, dynamic>),
     ),
     _ => throw FormatException('Unknown parent timetable result type'),
@@ -43,8 +44,13 @@ final class ParentTimetableSelection extends ParentTimetableHome {
 final class ParentTimetableLoaded extends ParentTimetableHome {
   final String pupilId;
   final TimeTable timetable;
+  final String? pupilName;
 
-  const ParentTimetableLoaded({required this.pupilId, required this.timetable});
+  const ParentTimetableLoaded({
+    required this.pupilId,
+    required this.timetable,
+    this.pupilName,
+  });
 
   factory ParentTimetableLoaded.fromJson(Map<String, dynamic> json) =>
       ParentTimetableHome.fromJson(json) as ParentTimetableLoaded;
@@ -52,6 +58,7 @@ final class ParentTimetableLoaded extends ParentTimetableHome {
   @override
   Map<String, dynamic> toJson() => {
     'type': 'loaded',
+    if (pupilName != null) 'pupilName': pupilName,
     'pupilId': pupilId,
     'timetable': timetable.toJson(),
   };

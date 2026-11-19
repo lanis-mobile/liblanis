@@ -468,6 +468,26 @@ void main() {
     },
   );
 
+  test('loaded plans preserve the matching child name in offline JSON', () {
+    final document = parse(fixture('pupil_1_detail'));
+    document.body!.append(
+      parseFragment(
+        '<nav><a href="stundenplan.php?a=detail_klasse&p=102">Other, Child (2)</a><a href="stundenplan.php?a=detail_klasse&p=101">Pupil (test) Name (1)</a></nav>',
+      ),
+    );
+    final loaded = TimetableParentParser.parseLoadedDocument(
+      document,
+      pupilId: '101',
+    );
+    expect(loaded.pupilName, 'Pupil (test) Name');
+    final restored = ParentTimetableLoaded.fromJson(
+      jsonDecode(jsonEncode(loaded)),
+    );
+    expect(restored.pupilName, loaded.pupilName);
+    final legacy = loaded.toJson()..remove('pupilName');
+    expect(ParentTimetableLoaded.fromJson(legacy).pupilName, isNull);
+  });
+
   test('support detection still requires the portal menu entry', () {
     expect(session.doesSupportFeature(Applets.timetable), isFalse);
     session.travelMenu = [
