@@ -7,12 +7,10 @@ class TypedSettings {
   final void Function(String key) _delete;
 
   TypedSettings({
-    required String? Function(String key) read,
-    required void Function(String key, String? value) write,
-    required void Function(String key) delete,
-  }) : _read = read,
-       _write = write,
-       _delete = delete;
+    required this._read,
+    required this._write,
+    required this._delete,
+  });
 
   /// Share storage while keeping every setting inside a separate namespace.
   TypedSettings scoped(String prefix) => TypedSettings(

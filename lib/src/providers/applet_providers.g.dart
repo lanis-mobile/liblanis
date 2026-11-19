@@ -13,7 +13,7 @@ part of 'applet_providers.dart';
 /// [ActiveAccount.replace] does not recreate parsers.
 
 @ProviderFor(appletContext)
-const appletContextProvider = AppletContextProvider._();
+final appletContextProvider = AppletContextProvider._();
 
 /// Builds only when [sessionProvider] has a ready [LanisSession].
 /// Watches [activeAccountIdProvider] (not the full account) so accountType
@@ -25,7 +25,7 @@ final class AppletContextProvider
   /// Builds only when [sessionProvider] has a ready [LanisSession].
   /// Watches [activeAccountIdProvider] (not the full account) so accountType
   /// [ActiveAccount.replace] does not recreate parsers.
-  const AppletContextProvider._()
+  AppletContextProvider._()
     : super(
         from: null,
         argument: null,
@@ -61,7 +61,7 @@ final class AppletContextProvider
 String _$appletContextHash() => r'f46766b33a3da3c9ed3bab77ba283e312ffded6f';
 
 @ProviderFor(substitutionsParser)
-const substitutionsParserProvider = SubstitutionsParserProvider._();
+final substitutionsParserProvider = SubstitutionsParserProvider._();
 
 final class SubstitutionsParserProvider
     extends
@@ -71,7 +71,7 @@ final class SubstitutionsParserProvider
           SubstitutionsParser
         >
     with $Provider<SubstitutionsParser> {
-  const SubstitutionsParserProvider._()
+  SubstitutionsParserProvider._()
     : super(
         from: null,
         argument: null,
@@ -109,7 +109,7 @@ String _$substitutionsParserHash() =>
     r'd18734f963a79b44ed43c3f69f5a4592f2b8cecb';
 
 @ProviderFor(timetableParser)
-const timetableParserProvider = TimetableParserProvider._();
+final timetableParserProvider = TimetableParserProvider._();
 
 final class TimetableParserProvider
     extends
@@ -119,7 +119,7 @@ final class TimetableParserProvider
           TimetableStudentParser
         >
     with $Provider<TimetableStudentParser> {
-  const TimetableParserProvider._()
+  TimetableParserProvider._()
     : super(
         from: null,
         argument: null,
@@ -156,7 +156,7 @@ final class TimetableParserProvider
 String _$timetableParserHash() => r'950c93a03b2fbe0a920bb7fd66073f1db1296bbf';
 
 @ProviderFor(timetableParentParser)
-const timetableParentParserProvider = TimetableParentParserProvider._();
+final timetableParentParserProvider = TimetableParentParserProvider._();
 
 final class TimetableParentParserProvider
     extends
@@ -166,7 +166,7 @@ final class TimetableParentParserProvider
           TimetableParentParser
         >
     with $Provider<TimetableParentParser> {
-  const TimetableParentParserProvider._()
+  TimetableParentParserProvider._()
     : super(
         from: null,
         argument: null,
@@ -204,12 +204,12 @@ String _$timetableParentParserHash() =>
     r'fffb274e825617df946b56f036d1cfc5a6334c3b';
 
 @ProviderFor(calendarParser)
-const calendarParserProvider = CalendarParserProvider._();
+final calendarParserProvider = CalendarParserProvider._();
 
 final class CalendarParserProvider
     extends $FunctionalProvider<CalendarParser, CalendarParser, CalendarParser>
     with $Provider<CalendarParser> {
-  const CalendarParserProvider._()
+  CalendarParserProvider._()
     : super(
         from: null,
         argument: null,
@@ -245,7 +245,7 @@ final class CalendarParserProvider
 String _$calendarParserHash() => r'4f504992f16f31e7075192df0d4e02d8a66979ea';
 
 @ProviderFor(conversationsParser)
-const conversationsParserProvider = ConversationsParserProvider._();
+final conversationsParserProvider = ConversationsParserProvider._();
 
 final class ConversationsParserProvider
     extends
@@ -255,7 +255,7 @@ final class ConversationsParserProvider
           ConversationsParser
         >
     with $Provider<ConversationsParser> {
-  const ConversationsParserProvider._()
+  ConversationsParserProvider._()
     : super(
         from: null,
         argument: null,
@@ -293,7 +293,7 @@ String _$conversationsParserHash() =>
     r'ffd16d58c82e86b499649b19e82d800e2b27a707';
 
 @ProviderFor(lessonsStudentParser)
-const lessonsStudentParserProvider = LessonsStudentParserProvider._();
+final lessonsStudentParserProvider = LessonsStudentParserProvider._();
 
 final class LessonsStudentParserProvider
     extends
@@ -303,7 +303,7 @@ final class LessonsStudentParserProvider
           LessonsStudentParser
         >
     with $Provider<LessonsStudentParser> {
-  const LessonsStudentParserProvider._()
+  LessonsStudentParserProvider._()
     : super(
         from: null,
         argument: null,
@@ -341,7 +341,7 @@ String _$lessonsStudentParserHash() =>
     r'47dec66b6e12c0d8e459d9df8258aaa6ee738d74';
 
 @ProviderFor(lessonsParentParser)
-const lessonsParentParserProvider = LessonsParentParserProvider._();
+final lessonsParentParserProvider = LessonsParentParserProvider._();
 
 final class LessonsParentParserProvider
     extends
@@ -351,7 +351,7 @@ final class LessonsParentParserProvider
           LessonsParentParser
         >
     with $Provider<LessonsParentParser> {
-  const LessonsParentParserProvider._()
+  LessonsParentParserProvider._()
     : super(
         from: null,
         argument: null,
@@ -389,7 +389,7 @@ String _$lessonsParentParserHash() =>
     r'2699d74c7e95e59286a09167c326b58e001c13ba';
 
 @ProviderFor(lessonsTeacherParser)
-const lessonsTeacherParserProvider = LessonsTeacherParserProvider._();
+final lessonsTeacherParserProvider = LessonsTeacherParserProvider._();
 
 final class LessonsTeacherParserProvider
     extends
@@ -399,7 +399,7 @@ final class LessonsTeacherParserProvider
           LessonsTeacherParser
         >
     with $Provider<LessonsTeacherParser> {
-  const LessonsTeacherParserProvider._()
+  LessonsTeacherParserProvider._()
     : super(
         from: null,
         argument: null,
@@ -437,7 +437,7 @@ String _$lessonsTeacherParserHash() =>
     r'68fd992f1b5b6770ddcb717da65dfbed65a2348b';
 
 @ProviderFor(dataStorageParser)
-const dataStorageParserProvider = DataStorageParserProvider._();
+final dataStorageParserProvider = DataStorageParserProvider._();
 
 final class DataStorageParserProvider
     extends
@@ -447,7 +447,7 @@ final class DataStorageParserProvider
           DataStorageParser
         >
     with $Provider<DataStorageParser> {
-  const DataStorageParserProvider._()
+  DataStorageParserProvider._()
     : super(
         from: null,
         argument: null,
@@ -484,7 +484,7 @@ final class DataStorageParserProvider
 String _$dataStorageParserHash() => r'e747fc2f4120f92cc11af0b7db9c728d06bde31d';
 
 @ProviderFor(studyGroupsParser)
-const studyGroupsParserProvider = StudyGroupsParserProvider._();
+final studyGroupsParserProvider = StudyGroupsParserProvider._();
 
 final class StudyGroupsParserProvider
     extends
@@ -494,7 +494,7 @@ final class StudyGroupsParserProvider
           StudyGroupsStudentParser
         >
     with $Provider<StudyGroupsStudentParser> {
-  const StudyGroupsParserProvider._()
+  StudyGroupsParserProvider._()
     : super(
         from: null,
         argument: null,

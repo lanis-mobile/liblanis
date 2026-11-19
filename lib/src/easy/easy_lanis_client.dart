@@ -28,11 +28,10 @@ class EasyLanisClient {
     required LanisConfig config,
     required LanisDatabase db,
     required bool ephemeral,
-    ClearTextAccount? ephemeralAccount,
+    this._ephemeralAccount,
   }) : _config = config,
        _db = db,
-       _ephemeral = ephemeral,
-       _ephemeralAccount = ephemeralAccount {
+       _ephemeral = ephemeral {
     _connection = ConnectionChecker(httpAdapter: config.httpAdapter);
     _accounts = EasyAccounts(
       db: ephemeral ? null : db,

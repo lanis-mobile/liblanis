@@ -10,12 +10,12 @@ part of 'core_providers.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(lanisConfig)
-const lanisConfigProvider = LanisConfigProvider._();
+final lanisConfigProvider = LanisConfigProvider._();
 
 final class LanisConfigProvider
     extends $FunctionalProvider<LanisConfig, LanisConfig, LanisConfig>
     with $Provider<LanisConfig> {
-  const LanisConfigProvider._()
+  LanisConfigProvider._()
     : super(
         from: null,
         argument: null,
@@ -51,12 +51,12 @@ final class LanisConfigProvider
 String _$lanisConfigHash() => r'665bf76b7088ff625b58f6b855051719d9fb7a8a';
 
 @ProviderFor(lanisDatabase)
-const lanisDatabaseProvider = LanisDatabaseProvider._();
+final lanisDatabaseProvider = LanisDatabaseProvider._();
 
 final class LanisDatabaseProvider
     extends $FunctionalProvider<LanisDatabase, LanisDatabase, LanisDatabase>
     with $Provider<LanisDatabase> {
-  const LanisDatabaseProvider._()
+  LanisDatabaseProvider._()
     : super(
         from: null,
         argument: null,
@@ -92,7 +92,7 @@ final class LanisDatabaseProvider
 String _$lanisDatabaseHash() => r'abc0473bf5057e3193ce7ec94ceb489e64541f9a';
 
 @ProviderFor(connectionChecker)
-const connectionCheckerProvider = ConnectionCheckerProvider._();
+final connectionCheckerProvider = ConnectionCheckerProvider._();
 
 final class ConnectionCheckerProvider
     extends
@@ -102,7 +102,7 @@ final class ConnectionCheckerProvider
           ConnectionChecker
         >
     with $Provider<ConnectionChecker> {
-  const ConnectionCheckerProvider._()
+  ConnectionCheckerProvider._()
     : super(
         from: null,
         argument: null,
@@ -139,7 +139,7 @@ final class ConnectionCheckerProvider
 String _$connectionCheckerHash() => r'9eea29957861b0fef35e88fd51eeb49c96156451';
 
 @ProviderFor(connectionStatus)
-const connectionStatusProvider = ConnectionStatusProvider._();
+final connectionStatusProvider = ConnectionStatusProvider._();
 
 final class ConnectionStatusProvider
     extends
@@ -149,7 +149,7 @@ final class ConnectionStatusProvider
           Stream<ConnectionStatus>
         >
     with $FutureModifier<ConnectionStatus>, $StreamProvider<ConnectionStatus> {
-  const ConnectionStatusProvider._()
+  ConnectionStatusProvider._()
     : super(
         from: null,
         argument: null,
@@ -178,11 +178,11 @@ final class ConnectionStatusProvider
 String _$connectionStatusHash() => r'd5e2383da9553faa3b8db642e81da9d846ac56ce';
 
 @ProviderFor(Accounts)
-const accountsProvider = AccountsProvider._();
+final accountsProvider = AccountsProvider._();
 
 final class AccountsProvider
     extends $AsyncNotifierProvider<Accounts, List<AccountSummary>> {
-  const AccountsProvider._()
+  AccountsProvider._()
     : super(
         from: null,
         argument: null,
@@ -207,8 +207,7 @@ abstract class _$Accounts extends $AsyncNotifier<List<AccountSummary>> {
   FutureOr<List<AccountSummary>> build();
   @$mustCallSuper
   @override
-  void runBuild() {
-    final created = build();
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<AsyncValue<List<AccountSummary>>, List<AccountSummary>>;
@@ -223,7 +222,7 @@ abstract class _$Accounts extends $AsyncNotifier<List<AccountSummary>> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, created);
+    return element.handleCreate(ref, build);
   }
 }
 
@@ -231,7 +230,7 @@ abstract class _$Accounts extends $AsyncNotifier<List<AccountSummary>> {
 /// [ClearTextAccount]) so [ActiveAccount.replace] does not tear down dio.
 
 @ProviderFor(ActiveAccountId)
-const activeAccountIdProvider = ActiveAccountIdProvider._();
+final activeAccountIdProvider = ActiveAccountIdProvider._();
 
 /// Identity of the active account. [Session] watches this (not the full
 /// [ClearTextAccount]) so [ActiveAccount.replace] does not tear down dio.
@@ -239,7 +238,7 @@ final class ActiveAccountIdProvider
     extends $NotifierProvider<ActiveAccountId, int?> {
   /// Identity of the active account. [Session] watches this (not the full
   /// [ClearTextAccount]) so [ActiveAccount.replace] does not tear down dio.
-  const ActiveAccountIdProvider._()
+  ActiveAccountIdProvider._()
     : super(
         from: null,
         argument: null,
@@ -275,8 +274,7 @@ abstract class _$ActiveAccountId extends $Notifier<int?> {
   int? build();
   @$mustCallSuper
   @override
-  void runBuild() {
-    final created = build();
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<int?, int?>;
     final element =
         ref.element
@@ -286,16 +284,16 @@ abstract class _$ActiveAccountId extends $Notifier<int?> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, created);
+    return element.handleCreate(ref, build);
   }
 }
 
 @ProviderFor(ActiveAccount)
-const activeAccountProvider = ActiveAccountProvider._();
+final activeAccountProvider = ActiveAccountProvider._();
 
 final class ActiveAccountProvider
     extends $NotifierProvider<ActiveAccount, ClearTextAccount?> {
-  const ActiveAccountProvider._()
+  ActiveAccountProvider._()
     : super(
         from: null,
         argument: null,
@@ -328,8 +326,7 @@ abstract class _$ActiveAccount extends $Notifier<ClearTextAccount?> {
   ClearTextAccount? build();
   @$mustCallSuper
   @override
-  void runBuild() {
-    final created = build();
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<ClearTextAccount?, ClearTextAccount?>;
     final element =
         ref.element
@@ -339,16 +336,16 @@ abstract class _$ActiveAccount extends $Notifier<ClearTextAccount?> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, created);
+    return element.handleCreate(ref, build);
   }
 }
 
 @ProviderFor(Session)
-const sessionProvider = SessionProvider._();
+final sessionProvider = SessionProvider._();
 
 final class SessionProvider
     extends $AsyncNotifierProvider<Session, LanisSession?> {
-  const SessionProvider._()
+  SessionProvider._()
     : super(
         from: null,
         argument: null,
@@ -373,8 +370,7 @@ abstract class _$Session extends $AsyncNotifier<LanisSession?> {
   FutureOr<LanisSession?> build();
   @$mustCallSuper
   @override
-  void runBuild() {
-    final created = build();
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AsyncValue<LanisSession?>, LanisSession?>;
     final element =
         ref.element
@@ -384,17 +380,17 @@ abstract class _$Session extends $AsyncNotifier<LanisSession?> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, created);
+    return element.handleCreate(ref, build);
   }
 }
 
 @ProviderFor(sharedOverAccountSettings)
-const sharedOverAccountSettingsProvider = SharedOverAccountSettingsProvider._();
+final sharedOverAccountSettingsProvider = SharedOverAccountSettingsProvider._();
 
 final class SharedOverAccountSettingsProvider
     extends $FunctionalProvider<TypedSettings, TypedSettings, TypedSettings>
     with $Provider<TypedSettings> {
-  const SharedOverAccountSettingsProvider._()
+  SharedOverAccountSettingsProvider._()
     : super(
         from: null,
         argument: null,
@@ -431,12 +427,12 @@ String _$sharedOverAccountSettingsHash() =>
     r'21a0615830a1f7e00765e02c10f42a1fa27ec910';
 
 @ProviderFor(accountSpecificSettings)
-const accountSpecificSettingsProvider = AccountSpecificSettingsProvider._();
+final accountSpecificSettingsProvider = AccountSpecificSettingsProvider._();
 
 final class AccountSpecificSettingsProvider
     extends $FunctionalProvider<TypedSettings?, TypedSettings?, TypedSettings?>
     with $Provider<TypedSettings?> {
-  const AccountSpecificSettingsProvider._()
+  AccountSpecificSettingsProvider._()
     : super(
         from: null,
         argument: null,
@@ -473,13 +469,13 @@ String _$accountSpecificSettingsHash() =>
     r'2d45be0868664822fc72e1c92af6f22327522a26';
 
 @ProviderFor(storageManager)
-const storageManagerProvider = StorageManagerProvider._();
+final storageManagerProvider = StorageManagerProvider._();
 
 final class StorageManagerProvider
     extends
         $FunctionalProvider<StorageManager?, StorageManager?, StorageManager?>
     with $Provider<StorageManager?> {
-  const StorageManagerProvider._()
+  StorageManagerProvider._()
     : super(
         from: null,
         argument: null,
@@ -518,7 +514,7 @@ String _$storageManagerHash() => r'0c7a22ab7ce89a1b86173d3d6a1dc7d1776dece9';
 /// [supportedAppletPhpUrls] refreshes without invalidating mid-rebuild.
 
 @ProviderFor(SessionFeatureEpoch)
-const sessionFeatureEpochProvider = SessionFeatureEpochProvider._();
+final sessionFeatureEpochProvider = SessionFeatureEpochProvider._();
 
 /// Bumped after [Session.authenticate] mutates travelMenu in place so
 /// [supportedAppletPhpUrls] refreshes without invalidating mid-rebuild.
@@ -526,7 +522,7 @@ final class SessionFeatureEpochProvider
     extends $NotifierProvider<SessionFeatureEpoch, int> {
   /// Bumped after [Session.authenticate] mutates travelMenu in place so
   /// [supportedAppletPhpUrls] refreshes without invalidating mid-rebuild.
-  const SessionFeatureEpochProvider._()
+  SessionFeatureEpochProvider._()
     : super(
         from: null,
         argument: null,
@@ -563,8 +559,7 @@ abstract class _$SessionFeatureEpoch extends $Notifier<int> {
   int build();
   @$mustCallSuper
   @override
-  void runBuild() {
-    final created = build();
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<int, int>;
     final element =
         ref.element
@@ -574,14 +569,14 @@ abstract class _$SessionFeatureEpoch extends $Notifier<int> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, created);
+    return element.handleCreate(ref, build);
   }
 }
 
 /// PHP applet URLs supported by the current authenticated session + account type.
 
 @ProviderFor(supportedAppletPhpUrls)
-const supportedAppletPhpUrlsProvider = SupportedAppletPhpUrlsProvider._();
+final supportedAppletPhpUrlsProvider = SupportedAppletPhpUrlsProvider._();
 
 /// PHP applet URLs supported by the current authenticated session + account type.
 
@@ -589,7 +584,7 @@ final class SupportedAppletPhpUrlsProvider
     extends $FunctionalProvider<Set<String>, Set<String>, Set<String>>
     with $Provider<Set<String>> {
   /// PHP applet URLs supported by the current authenticated session + account type.
-  const SupportedAppletPhpUrlsProvider._()
+  SupportedAppletPhpUrlsProvider._()
     : super(
         from: null,
         argument: null,

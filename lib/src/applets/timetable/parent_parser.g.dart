@@ -53,8 +53,7 @@ abstract final class TimetableParentParserCacheRequests {
     version: 1,
     arguments: {
       'reference': {
-        'type':
-            'package:liblanis/src/models/timetable_parent.dart#ParentTimetableReference<>',
+        'type': 'package:liblanis/src/models/timetable_parent.dart#ParentTimetableReference<>',
         'value': reference.toJson(),
       },
     },

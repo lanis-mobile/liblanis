@@ -3,11 +3,11 @@ description: Generates typed cache calls and detached request descriptors for li
 version: 0.1.0
 publish_to: none
 environment:
-  sdk: ^3.10.0
+  sdk: ^3.13.0
 dependencies:
-  analyzer: ^8.4.0
-  build: ^4.0.7
-  source_gen: ^4.2.4
+  analyzer: ^14.7.0
+  build: ^5.0.0
+  source_gen: ^4.3.1
 
 dev_dependencies:
-  lints: ^6.0.0
+  lints: ^6.1.0

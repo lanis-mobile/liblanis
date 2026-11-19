@@ -7,10 +7,9 @@ class EasySettings {
   final int? _activeAccountId;
 
   EasySettings({
-    required LanisDatabase db,
-    required int? activeAccountId,
-  })  : _db = db,
-        _activeAccountId = activeAccountId;
+    required this._db,
+    required this._activeAccountId,
+  });
 
   TypedSettings get shared => TypedSettings.shared(_db);
 
