@@ -1,5 +1,7 @@
 import 'time_of_day.dart';
 
+enum TimetableWeekParity { even, odd }
+
 class TimetableSubject {
   // The ID is not nullable, to support legacy data where the ID was not present
   String? id;
@@ -7,6 +9,9 @@ class TimetableSubject {
   String? raum;
   String? lehrer;
   String? badge;
+
+  /// Optional ISO calendar-week recurrence, independent of school week badges.
+  TimetableWeekParity? calendarWeekParity;
   int duration;
   SphTimeOfDay startTime;
   SphTimeOfDay endTime;
@@ -19,6 +24,7 @@ class TimetableSubject {
     required this.raum,
     required this.lehrer,
     required this.badge,
+    this.calendarWeekParity,
     required this.duration,
     required this.startTime,
     required this.endTime,
@@ -37,6 +43,8 @@ class TimetableSubject {
       'raum': raum,
       'lehrer': lehrer,
       'badge': badge,
+      if (calendarWeekParity != null)
+        'calendarWeekParity': calendarWeekParity!.name,
       'duration': duration,
       'startTime': [startTime.hour, startTime.minute],
       'endTime': [endTime.hour, endTime.minute],
@@ -51,6 +59,9 @@ class TimetableSubject {
       raum: json['raum'],
       lehrer: json['lehrer'],
       badge: json['badge'],
+      calendarWeekParity: json['calendarWeekParity'] == null
+          ? null
+          : TimetableWeekParity.values.byName(json['calendarWeekParity']),
       duration: json['duration'],
       stunde: json['stunde'],
       startTime: SphTimeOfDay(
@@ -73,6 +84,7 @@ class TimetableSubject {
           raum == other.raum &&
           lehrer == other.lehrer &&
           badge == other.badge &&
+          calendarWeekParity == other.calendarWeekParity &&
           duration == other.duration &&
           stunde == other.stunde &&
           startTime == other.startTime &&
@@ -170,8 +182,7 @@ class TimeTableRow {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(type, startTime, endTime, lessonIndex, label);
+  int get hashCode => Object.hash(type, startTime, endTime, lessonIndex, label);
 
   Map<String, dynamic> toJson() {
     return {
@@ -230,9 +241,7 @@ class TimeTableData {
     final schoolHours = timetable.hours ?? const <TimeTableRow>[];
     for (var (index, hour) in schoolHours.indexed) {
       if (index > 0 && schoolHours[index - 1].endTime != hour.startTime) {
-        if (schoolHours[index - 1].endTime.differenceInMinutes(
-              hour.startTime,
-            ) >
+        if (schoolHours[index - 1].endTime.differenceInMinutes(hour.startTime) >
             10) {
           hours.add(
             TimeTableRow(
