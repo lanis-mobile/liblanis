@@ -401,4 +401,4 @@ signatures during generation, including callbacks, method or owner generics,
 optional positional parameters, and the reserved `cachePolicy` parameter.
 Increase the operation version when changing payload compatibility. This first
 migration covers timetables and substitutions; other applets retain their existing
-behavior until migrated. See [the migration plan](OFFLINE_CACHE_MIGRATION.md).
+behavior until migrated.
