@@ -14,16 +14,12 @@ class EasyAccounts {
   final Future<void> Function(int id)? _onAccountTypeChanged;
 
   EasyAccounts({
-    required LanisDatabase? db,
-    required LanisConfig config,
-    required bool ephemeral,
-    Future<void> Function(int id)? onRemoveActive,
-    Future<void> Function(int id)? onAccountTypeChanged,
-  })  : _db = db,
-        _config = config,
-        _ephemeral = ephemeral,
-        _onRemoveActive = onRemoveActive,
-        _onAccountTypeChanged = onAccountTypeChanged;
+    required this._db,
+    required this._config,
+    required this._ephemeral,
+    this._onRemoveActive,
+    this._onAccountTypeChanged,
+  });
 
   LanisDatabase get _requireDb {
     if (_ephemeral || _db == null) {

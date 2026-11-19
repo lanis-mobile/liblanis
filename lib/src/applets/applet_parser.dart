@@ -227,7 +227,7 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
     );
   }
 
-  void addResponse(final FetcherResponse<T> data) {
+  void addResponse(FetcherResponse<T> data) {
     _latestResponse = data;
     _scheduleCacheExpiry();
     if (!_controller.isClosed) {

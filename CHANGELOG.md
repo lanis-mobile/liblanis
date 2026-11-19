@@ -1,3 +1,12 @@
+## 0.2.1
+
+* Upgrade runtime dependencies, including Riverpod 3.5 and annotations 4.0.8,
+  and regenerate providers with Riverpod generator 4.0.10.
+* Upgrade analyzer, build, source_gen, and the local cache generator tooling;
+  require Dart 3.13 or newer.
+* Update source syntax and constructor initialization for the current analyzer
+  and lint rules. Keep PointyCastle on 3.9.1 for encrypt compatibility.
+
 ## 0.2.0
 
 * Separate refresh cadence from offline retention: default applet snapshots remain

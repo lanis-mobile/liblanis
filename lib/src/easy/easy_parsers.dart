@@ -31,10 +31,9 @@ class EasyParsers {
   StudyGroupsStudentParser? _studyGroups;
 
   EasyParsers({
-    required AppletContext ctx,
-    required Future<bool> Function() isConnected,
-  }) : _ctx = ctx,
-       _isConnected = isConnected {
+    required this._ctx,
+    required this._isConnected,
+  }) {
     substitutions.loadFilterFromStorage();
   }
 
