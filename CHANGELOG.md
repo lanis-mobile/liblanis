@@ -1,4 +1,4 @@
-## Unreleased
+## 0.2.0
 
 * Separate refresh cadence from offline retention: default applet snapshots remain
   available for seven days, with their original fetch dates preserved.
