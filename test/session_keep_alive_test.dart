@@ -128,6 +128,24 @@ void main() {
   }
 
   test(
+    '503 reads remain transport failures instead of reaching HTML parsers',
+    () async {
+      adapter.homeStatus = 503;
+      await expectLater(
+        session.dio.get('https://start.schulportal.hessen.de/'),
+        throwsA(
+          isA<DioException>().having(
+            CacheService.isTransportFailure,
+            'transport failure',
+            isTrue,
+          ),
+        ),
+      );
+      expect(session.connectionChecker.status, ConnectionStatus.disconnected);
+    },
+  );
+
+  test(
     'authentication immediately after keep-alive 503 reports offline',
     () async {
       final cachedSession = await sessionWithCachedConnection();

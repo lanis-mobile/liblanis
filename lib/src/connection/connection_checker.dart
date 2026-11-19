@@ -49,7 +49,13 @@ class ConnectionChecker {
 
   Future<bool> testConnection() async {
     try {
-      await dio.post('https://start.schulportal.hessen.de/ajax_login.php');
+      final response = await dio.post(
+        'https://start.schulportal.hessen.de/ajax_login.php',
+      );
+      if (response.statusCode == 503) {
+        status = ConnectionStatus.disconnected;
+        return false;
+      }
       status = ConnectionStatus.connected;
       return true;
     } catch (_) {

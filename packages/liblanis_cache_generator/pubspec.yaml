@@ -1,0 +1,13 @@
+name: liblanis_cache_generator
+description: Generates typed cache calls and detached request descriptors for liblanis.
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: ^3.10.0
+dependencies:
+  analyzer: ^8.4.0
+  build: ^4.0.7
+  source_gen: ^4.2.4
+
+dev_dependencies:
+  lints: ^6.0.0

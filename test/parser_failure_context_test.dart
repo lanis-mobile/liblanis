@@ -12,19 +12,23 @@ class _OnlineChecker extends ConnectionChecker {
 
 class _Adapter implements HttpClientAdapter {
   String events = 'invalid calendar JSON';
+  Object? failure;
 
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
-  ) async => ResponseBody.fromString(
-    options.method == 'GET' ? '<html></html>' : events,
-    200,
-    headers: {
-      Headers.contentTypeHeader: ['text/plain'],
-    },
-  );
+  ) async {
+    if (failure != null) throw failure!;
+    return ResponseBody.fromString(
+      options.method == 'GET' ? '<html></html>' : events,
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['text/plain'],
+      },
+    );
+  }
 
   @override
   void close({bool force = false}) {}
@@ -96,6 +100,26 @@ void main() {
       expect(stack.toString(), contains('CalendarParser.parseEventsJson'));
     }
   });
+
+  test(
+    'calendar transport loss preserves a previously loaded empty result',
+    () async {
+      adapter.events = '[]';
+      final parser = CalendarParser(ctx, isConnected: () async => true);
+      addTearDown(parser.dispose);
+      await parser.fetchData();
+      final fetched = parser.latestResponse!.fetchedAt;
+      adapter.failure = DioException(
+        requestOptions: RequestOptions(path: '/'),
+        type: DioExceptionType.connectionError,
+      );
+      await parser.fetchData(forceRefresh: true);
+      expect(parser.latestResponse!.status, FetcherStatus.done);
+      expect(parser.latestResponse!.content, isEmpty);
+      expect(parser.latestResponse!.contentStatus, ContentStatus.offline);
+      expect(parser.latestResponse!.fetchedAt, fetched);
+    },
+  );
 
   test('valid empty calendar still succeeds', () async {
     adapter.events = '[]';

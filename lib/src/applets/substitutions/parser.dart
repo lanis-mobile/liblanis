@@ -12,19 +12,22 @@ import '../../models/substitution.dart';
 import '../applet_context.dart';
 import '../applet_parser.dart';
 import '../definition.dart';
+import '../../cache/annotation.dart';
+import '../../cache/types.dart';
 
-class SubstitutionsParser extends AppletParser<SubstitutionPlan> {
+part 'parser.g.dart';
+
+class SubstitutionsParser extends AppletParser<SubstitutionPlan>
+    with _$SubstitutionsParserCache {
   final DateFormat entryFormat = DateFormat('dd_MM_yyyy');
 
-  SubstitutionsParser(
-    AppletContext ctx, {
-    Future<bool> Function()? isConnected,
-  }) : super(
-         ctx,
-         Applets.substitutions,
-         isConnected:
-             isConnected ?? () => ctx.session.connectionChecker.connected,
-       );
+  SubstitutionsParser(AppletContext ctx, {Future<bool> Function()? isConnected})
+    : super(
+        ctx,
+        Applets.substitutions,
+        isConnected:
+            isConnected ?? () => ctx.session.connectionChecker.connected,
+      );
 
   SubstitutionFilter localFilter = {};
 
@@ -57,8 +60,26 @@ class SubstitutionsParser extends AppletParser<SubstitutionPlan> {
   }
 
   @override
-  Future<SubstitutionPlan> getHome() async {
+  CacheRequest<SubstitutionPlan> get homeCacheRequest =>
+      SubstitutionsParserCacheRequests.getHome();
+
+  @override
+  Future<MaybeCacheResult<SubstitutionPlan>> loadCachedHome({
+    CacheReadPolicy? policy,
+  }) => cached.getHome(cachePolicy: policy);
+
+  @override
+  Future<SubstitutionPlan> getHome() async =>
+      presentCachedHome(await _getHome());
+
+  @override
+  SubstitutionPlan presentCachedHome(SubstitutionPlan value) {
     loadFilterFromStorage();
+    return SubstitutionPlan.fromJson(value.toJson())..filterAll(localFilter);
+  }
+
+  @Cacheable(operation: 'substitutions.home', applet: Applets.substitutions)
+  Future<SubstitutionPlan> _getHome() async {
     final document = await getSubstitutionPlanDocument();
     final dates = getSubstitutionDates(document);
     final ajaxByDate = <String, String>{};
@@ -66,7 +87,6 @@ class SubstitutionsParser extends AppletParser<SubstitutionPlan> {
       ajaxByDate[date] = await fetchSubstitutionsAjaxBody(date);
     }
     final plan = parseDocumentHtml(document, ajaxByDate: ajaxByDate);
-    plan.filterAll(localFilter);
     return plan;
   }
 
@@ -84,8 +104,8 @@ class SubstitutionsParser extends AppletParser<SubstitutionPlan> {
     final dates = getSubstitutionDates(html);
     final parsedDocument = parse(html);
 
-    final hasAjaxPayload = ajaxByDate != null &&
-        dates.any((d) => ajaxByDate.containsKey(d));
+    final hasAjaxPayload =
+        ajaxByDate != null && dates.any((d) => ajaxByDate.containsKey(d));
 
     if (dates.isEmpty || !hasAjaxPayload) {
       final plan = parseSubstitutionsNonAJAX(parsedDocument);
@@ -100,8 +120,9 @@ class SubstitutionsParser extends AppletParser<SubstitutionPlan> {
       final day = parseAjaxDayJson(body, date);
       final tagId = 'tag${DateFormat('dd_MM_yyyy').format(day.dateTime)}';
       final tagEl = parsedDocument.getElementById(tagId);
-      final infos =
-          tagEl == null ? <SubstitutionInfo>[] : parseInformationTables(tagEl);
+      final infos = tagEl == null
+          ? <SubstitutionInfo>[]
+          : parseInformationTables(tagEl);
       fullPlan.add(day.withDayInfo(infos));
     }
     fullPlan.removeEmptyDays();
@@ -114,7 +135,8 @@ class SubstitutionsParser extends AppletParser<SubstitutionPlan> {
   /// Non-list JSON / HTML is thrown for the caller (or global handler).
   static SubstitutionDay parseAjaxDayJson(String body, String date) {
     final trimmed = body.trim();
-    if (trimmed.startsWith('<') || trimmed.toLowerCase().startsWith('<!doctype')) {
+    if (trimmed.startsWith('<') ||
+        trimmed.toLowerCase().startsWith('<!doctype')) {
       throw FormatException(
         'Substitution AJAX body is HTML, not a JSON list',
         trimmed.length > 80 ? '${trimmed.substring(0, 80)}…' : trimmed,
@@ -177,8 +199,11 @@ class SubstitutionsParser extends AppletParser<SubstitutionPlan> {
         'https://start.schulportal.hessen.de/vertretungsplan.php',
       );
       return response.data.toString();
-    } on SocketException {
-      throw NetworkException();
+    } on SocketException catch (error, stack) {
+      Error.throwWithStackTrace(
+        NetworkException.fromError(error, stack),
+        stack,
+      );
     } catch (e) {
       rethrow;
     }
@@ -201,8 +226,11 @@ class SubstitutionsParser extends AppletParser<SubstitutionPlan> {
         ),
       );
       return response.data.toString();
-    } on SocketException {
-      throw NetworkException();
+    } on SocketException catch (error, stack) {
+      Error.throwWithStackTrace(
+        NetworkException.fromError(error, stack),
+        stack,
+      );
     }
   }
 
@@ -236,7 +264,8 @@ class SubstitutionsParser extends AppletParser<SubstitutionPlan> {
         continue;
       }
       final idKey = entryFormat.format(parsedDate);
-      final tagEl = document.getElementById('tag$idKey') ??
+      final tagEl =
+          document.getElementById('tag$idKey') ??
           document.getElementById('tag$date');
       if (tagEl == null) continue;
 
@@ -244,7 +273,8 @@ class SubstitutionsParser extends AppletParser<SubstitutionPlan> {
         parsedDate: parsedDate.format('dd.MM.yyyy'),
         infos: parseInformationTables(tagEl),
       );
-      final vtable = document.querySelector('#vtable$idKey') ??
+      final vtable =
+          document.querySelector('#vtable$idKey') ??
           document.querySelector('#vtable$date') ??
           tagEl.querySelector('table[id^=vtable]');
       if (vtable == null) {
@@ -265,9 +295,12 @@ class SubstitutionsParser extends AppletParser<SubstitutionPlan> {
         continue;
       }
 
-      for (final row in vtable.querySelectorAll('tbody tr').where(
-            (element) => element.querySelectorAll('td[colspan]').isEmpty,
-          )) {
+      for (final row
+          in vtable
+              .querySelectorAll('tbody tr')
+              .where(
+                (element) => element.querySelectorAll('td[colspan]').isEmpty,
+              )) {
         final fields = row.querySelectorAll('td');
         if (fields.length <= stundeIdx) continue;
         String? col(String name) {

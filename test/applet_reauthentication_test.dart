@@ -29,6 +29,7 @@ class _Session extends LanisSession {
 class _Parser extends AppletParser<String> {
   int calls = 0;
   bool alwaysFail = false;
+  Object? readFailure;
 
   _Parser(AppletContext context)
     : super(
@@ -44,6 +45,7 @@ class _Parser extends AppletParser<String> {
   @override
   Future<String> getHome() async {
     calls++;
+    if (readFailure != null) throw readFailure!;
     if (calls == 1 || alwaysFail) throw FormatException('fetch failed');
     return 'retried content';
   }
@@ -89,6 +91,22 @@ void main() {
     database.dispose();
     LanisClient.reset();
   });
+
+  test(
+    'a foreground transport failure keeps a loaded legacy module without logging in again',
+    () async {
+      parser.calls = 1;
+      await parser.fetchData();
+      final fetched = parser.latestResponse!.fetchedAt;
+      parser.readFailure = NoConnectionException();
+      await parser.fetchData(forceRefresh: true);
+      expect(parser.latestResponse!.status, FetcherStatus.done);
+      expect(parser.latestResponse!.content, 'retried content');
+      expect(parser.latestResponse!.contentStatus, ContentStatus.offline);
+      expect(parser.latestResponse!.fetchedAt, fetched);
+      expect(session.authenticationCalls, 0);
+    },
+  );
 
   for (final failure in <Object>[
     NoConnectionException(),

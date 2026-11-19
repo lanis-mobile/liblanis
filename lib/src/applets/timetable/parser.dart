@@ -10,8 +10,13 @@ import '../../models/timetable.dart';
 import '../applet_context.dart';
 import '../applet_parser.dart';
 import '../definition.dart';
+import '../../cache/annotation.dart';
+import '../../cache/types.dart';
 
-class TimetableStudentParser extends AppletParser<TimeTable> {
+part 'parser.g.dart';
+
+class TimetableStudentParser extends AppletParser<TimeTable>
+    with _$TimetableStudentParserCache {
   TimetableStudentParser(
     AppletContext ctx, {
     Future<bool> Function()? isConnected,
@@ -21,6 +26,18 @@ class TimetableStudentParser extends AppletParser<TimeTable> {
          isConnected:
              isConnected ?? () => ctx.session.connectionChecker.connected,
        );
+
+  @override
+  CacheRequest<TimeTable> get homeCacheRequest =>
+      TimetableStudentParserCacheRequests.getHome();
+
+  @override
+  Future<MaybeCacheResult<TimeTable>> loadCachedHome({
+    CacheReadPolicy? policy,
+  }) => cached.getHome(cachePolicy: policy);
+
+  @Cacheable(operation: 'timetable.student.home', applet: Applets.timetable)
+  Future<TimeTable> _getHome() => getHome();
 
   @override
   Future<TimeTable> getHome() async {
@@ -132,10 +149,8 @@ class TimetableStudentParser extends AppletParser<TimeTable> {
       if (rowIndex == 0) continue; // skip first empty/header row
       for (var (colIndex, colElement) in rowElement.children.indexed) {
         if (colIndex == 0) continue; // skip first column
-        final int rowSpan = int.tryParse(
-              colElement.attributes['rowspan'] ?? '1',
-            ) ??
-            1;
+        final int rowSpan =
+            int.tryParse(colElement.attributes['rowspan'] ?? '1') ?? 1;
 
         var actualDay = colIndex - 1;
         while (actualDay < dayCount && alreadyParsed[rowIndex][actualDay]) {
