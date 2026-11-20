@@ -1,0 +1,34 @@
+{
+  "source": "liblanis 0.2.1 / encrypt 5.0.3",
+  "key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLQ==",
+  "vectors": [
+    {
+      "plaintext": "a",
+      "ciphertext": "U2FsdGVkX18oBk6TZk16onIMK6ndbEaHWNt6YNHzhNA="
+    },
+    {
+      "plaintext": "aaaaaaaaaaaaaaa",
+      "ciphertext": "U2FsdGVkX1/EAOGGxDvpaIcNtW3eLRXs5EUx4dyZERQ="
+    },
+    {
+      "plaintext": "aaaaaaaaaaaaaaaa",
+      "ciphertext": "U2FsdGVkX1+/pryhzebZN/zm6JzYkc2C+eSo204ga2GGUqelQ38qNzsAjlAcL0vQ"
+    },
+    {
+      "plaintext": "aaaaaaaaaaaaaaaaa",
+      "ciphertext": "U2FsdGVkX1+UASSPqRlFWgF/GnaX3mOtefKPoERzihCd/COt9rmG6NcgpZKP27gM"
+    },
+    {
+      "plaintext": "Grüße 👋\nこんにちは",
+      "ciphertext": "U2FsdGVkX18OeoOA0QOa3mcoYEw0RCMvH0ej9jXJEpVPKZPRPtVgD5QlYPGerd9C"
+    },
+    {
+      "plaintext": "{\"rows\":[{\"text\":\"Hallo\"}]}",
+      "ciphertext": "U2FsdGVkX1/xuG6kcmYeu1GMDJOOMY8prf/gWdX6w2gsYEh+E97yaYGr/LJ0/klh"
+    },
+    {
+      "plaintext": "long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload long payload ",
+      "ciphertext": "U2FsdGVkX1+9NZ71R43z/Z8WYG/3m7WtSnsgm7WYBN2VHM9UeDdVU+KC3I054mbl57b4UInI5Msfmq1Z4IYO1iSBmkF9xW7qo8tTi7K0sxZGpkMexbIOxqwAYftRh8WoAOaRJRYycppSsSz/rNQKnAxou8XJm1bGk2mOb4eEfPzfTN6tXH18CyeJGIQorw1AuWCkUQkZfmopXsLEeBDzbWn+AIl3OuVPsVA39PEPj61RNbEv7gqT/RPtaZJAGZDefBUAaHW5h+RoMxMI1GEcynqZL5Sbzv7dJjTVNZiUISDMMruc3+zrYJoyCEbZ56eTECzLhuMkZRpfOueEqwJMjyX1DG21exkvmJM+yvuExvPjHUIyk8X3bQqBZzoWb1hC4BNKXfAOAWZOhdpUmuxSzgzFXUd9tX7IVT6JKGrbSeZtrQUeOu0qdDgXizLBoqKEtY1J3F1sEohzS5ploFbma3b+YYYKmjR2jpAdWA1XtBrBjuEDiXqXy3j0C4SsO8OKcmo8RzLeDut3dJsvDBHDoIxGutfU4QWiQhCcf6DqY77oDfyxG8VHEEjSbjw83kCfq6wYdx8gdqQaHpatjsdz7Qd0jhVBcWP4DBj0COmodLgP75j53IfjoDaOoaq5h3pH18AdgneMMsm/HNK/8/Dv2UQN54cD6VDAxC47cEXmKvWdD6dTaXZLuzXbWJbDw+wjIJdlqSH/WTJ8XSIZVF8y6vIZQ+hVz1Y1ZYh8FJ//zc/qu7hKODgtGwKGQZr+KCuuBFU67YFN8X4BPEJNLi0/ITi64jy8lTMJCQYx6AunvEAyGZxCUcXCDdBqJuYaTwtL2ZL66RqzamTTtOncyf/ScteXbGm3pPep8YKMD+EI8l3zlajaxzqNqXsxA5q74Ro1jDsJhTsfY97up1xM+7WKnGB23lj8Fs/7t1SZvMLURedKAep0XNVQRYUmfxZYMTAd5k6Ze+cKEBkz1EWcVnPYs7fAavit77EI5YRs2Tvpn0CpX8fa/DcsmhqJYVIZc2o5vsUOaKyZARZE1k3ENq0+5VUSDCz/FX4k4x7fLrSTUzRp8ceozDfRBbs6MsACniY5x5arhOSngkMpPfPLPg9xAh6OeH3zNs8ITLvkXHOLfZKVQNVfHkY/RFV7bL4lO8dMWCEEQ1B/8rnpHoJhejsDQ05GnMNluZdWNPxpfZOAhoahKkgUTUN3dw7eDLXpszfPO1GgSLSxg5YNBLdMU5kOnFvausWK/krETGbPS9/nnXpD3aKzVWR604pfw7+4KG8VmmAHJpfoFUKQfvwrpK/ofoCZUnWvtKNz3WI1MLpnJL8yuZLTVQbVseQPlSFXBQsHBLa4f1egU+BTwN/kXgVJ2A7lPU8CvUVbXmAjE1rfVL23imgbVOvLlVxouiQ7CPQhnkDy8pjqN5uAYt/i9RpZQGuQ5f0WtIQFW7pXjw9yY78JTVIKqBEHyDA+336y1Cie0RSXYgvuubADbmujqW3HrWk99G6LDlER49+eniwnf+vkaJmqQVFY3LYWg1QZIxmuOO8fDQvCoMLJv0u0otSm//8/WNLyH7DrWAd3rdRPyIUym9q0j0DJxlLVyyOKhMoJmm5GFnbYWxn1sriZeg7W1gD8ecTmlp8MrV52FcB8Y+6SM68g8w+vAkjHIrgM85/2qYjuRBLpligtDpzWji07fqU4rCTnXnMkHLS2Bj0Ii6H9MuM0NIFajneROokGWl0TPsQw8OgP94NnyMVuB6mYD9wUijPAzYiBV4dDodgxr78="
+    }
+  ]
+}

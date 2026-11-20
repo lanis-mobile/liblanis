@@ -1,3 +1,15 @@
+## 0.3.0
+
+* Replace the archived `encrypt` wrapper with PointyCastle 4 primitives, retaining
+  the SPH RSA PKCS1 v1.5 handshake, AES-256-CBC/PKCS7 payloads, OpenSSL `Salted__`
+  envelope and existing MD5 key derivation required by the server protocol.
+* **Breaking:** `Cryptor.key`, `generateKey()`, `bytesToKeys()` and static decrypt
+  helpers now use `Uint8List` instead of `encrypt.Key`. Pass the old key's `.bytes`
+  when migrating callers. Session-owned cryptor initialization remains automatic.
+* Handle empty plaintext with a complete PKCS7 padding block; reject missing or
+  truncated salt envelopes. Verify legacy payloads, public-key PEM formats,
+  padding failures, isolate decryption and overlapping authentication.
+
 ## 0.2.1
 
 * Upgrade runtime dependencies, including Riverpod 3.5 and annotations 4.0.8,
