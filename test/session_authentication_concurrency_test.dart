@@ -3,10 +3,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:pointycastle/export.dart';
 import 'package:liblanis/liblanis.dart';
 import 'package:liblanis/src/session/cryptor.dart';
-import 'package:pointycastle/asymmetric/api.dart';
 import 'package:test/test.dart';
 
 class _OnlineChecker extends ConnectionChecker {
@@ -57,9 +56,8 @@ class _HandshakeCryptor extends Cryptor {
   bool pauseFirst = true;
 
   @override
-  encrypt.Key generateKey() => encrypt.Key(
-    Uint8List.fromList(List.filled(Cryptor.passphraseSize, ++generatedKeys)),
-  );
+  Uint8List generateKey() =>
+      Uint8List.fromList(List.filled(Cryptor.passphraseSize, ++generatedKeys));
 
   @override
   Future<RSAPublicKey?> getPublicKey() async =>
@@ -67,29 +65,29 @@ class _HandshakeCryptor extends Cryptor {
 
   // The transport stands in for RSA; each handshake still receives its own key.
   @override
-  Uint8List encryptKey(RSAPublicKey publicKey) => key.bytes;
+  Uint8List encryptKey(RSAPublicKey publicKey) => key;
 
   @override
   Future<String?> handshake(String encryptedKey) async {
-    final serverKey = encrypt.Key(base64Decode(encryptedKey));
+    final serverKey = base64Decode(encryptedKey);
     final salt = Uint8List(8);
     final derived = Cryptor.bytesToKeys(salt, serverKey);
-    final aes = encrypt.Encrypter(
-      encrypt.AES(
-        encrypt.Key(derived.sublist(0, 32)),
-        mode: encrypt.AESMode.cbc,
-        padding: 'PKCS7',
-      ),
-    );
+    final aes =
+        PaddedBlockCipherImpl(PKCS7Padding(), CBCBlockCipher(AESEngine()))
+          ..init(
+            true,
+            PaddedBlockCipherParameters<ParametersWithIV<KeyParameter>, Null>(
+              ParametersWithIV(
+                KeyParameter(derived.sublist(0, 32)),
+                derived.sublist(32, 48),
+              ),
+              null,
+            ),
+          );
     final challenge = base64Encode([
       ...utf8.encode('Salted__'),
       ...salt,
-      ...aes
-          .encryptBytes(
-            serverKey.bytes,
-            iv: encrypt.IV(derived.sublist(32, 48)),
-          )
-          .bytes,
+      ...aes.process(serverKey),
     ]);
     if (++handshakes == 1) {
       firstHandshake.complete();

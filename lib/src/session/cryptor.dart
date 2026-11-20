@@ -6,15 +6,15 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
-import 'package:pointycastle/asymmetric/api.dart';
+import 'package:pointycastle/asn1.dart';
+import 'package:pointycastle/export.dart';
 
 import '../exceptions.dart';
 
 /// Lanis RSA handshake + AES decrypt for SPH payloads.
 class Cryptor {
   static const int passphraseSize = 46;
-  late encrypt.Key key;
+  late Uint8List key;
   bool authenticated = false;
   late Dio dio;
 
@@ -38,10 +38,7 @@ class Cryptor {
         throw LanisDownException();
       }
 
-      return encrypt.RSAKeyParser().parse(
-            jsonDecode(response.toString())['publickey'],
-          )
-          as RSAPublicKey;
+      return _parsePublicKey(jsonDecode(response.toString())['publickey']);
     } on SocketException {
       return null;
     } on DioException {
@@ -73,22 +70,58 @@ class Cryptor {
     }
   }
 
-  encrypt.Key generateKey() => encrypt.Key.fromSecureRandom(passphraseSize);
+  static Uint8List _randomBytes(int length) {
+    final random = Random.secure();
+    return Uint8List.fromList(
+      List.generate(length, (_) => random.nextInt(256)),
+    );
+  }
+
+  Uint8List generateKey() => _randomBytes(passphraseSize);
+
+  static RSAPublicKey _parsePublicKey(String pem) {
+    final rows = pem.trim().split(RegExp(r'\r\n?|\n'));
+    final header = rows.first;
+    if (header != '-----BEGIN PUBLIC KEY-----' &&
+        header != '-----BEGIN RSA PUBLIC KEY-----') {
+      throw const FormatException('Expected an RSA public key PEM');
+    }
+    final der = base64Decode(
+      rows
+          .where((row) => !row.startsWith('-----'))
+          .map((row) => row.trim())
+          .join(),
+    );
+    var sequence = ASN1Parser(der).nextObject() as ASN1Sequence;
+    if (header == '-----BEGIN PUBLIC KEY-----') {
+      final algorithm = sequence.elements![0] as ASN1Sequence;
+      final oid = algorithm.elements![0] as ASN1ObjectIdentifier;
+      if (oid.objectIdentifierAsString != '1.2.840.113549.1.1.1') {
+        throw const FormatException('Expected RSA algorithm');
+      }
+      final bits = sequence.elements![1] as ASN1BitString;
+      sequence =
+          ASN1Parser(Uint8List.fromList(bits.stringValues!)).nextObject()
+              as ASN1Sequence;
+    }
+    return RSAPublicKey(
+      (sequence.elements![0] as ASN1Integer).integer!,
+      (sequence.elements![1] as ASN1Integer).integer!,
+    );
+  }
 
   Uint8List encryptKey(RSAPublicKey publicKey) {
-    final rsa = encrypt.RSA(
-      publicKey: publicKey,
-      encoding: encrypt.RSAEncoding.PKCS1,
-    );
-    return rsa.encrypt(key.bytes).bytes;
+    final rsa = PKCS1Encoding(RSAEngine())
+      ..init(true, PublicKeyParameter<RSAPublicKey>(publicKey));
+    return rsa.process(key);
   }
 
   bool checkForEqualEncryption(Uint8List challenge) {
     final decryptedChallenge = decrypt(challenge);
-    return base64.encode(decryptedChallenge!) == base64.encode(key.bytes);
+    return base64.encode(decryptedChallenge!) == base64.encode(key);
   }
 
-  static Uint8List bytesToKeys(Uint8List salt, encrypt.Key key) {
+  static Uint8List bytesToKeys(Uint8List salt, Uint8List key) {
     Uint8List concatenatedHashes = Uint8List(0);
     Uint8List currentHash = Uint8List(0);
     var enoughBytesForKey = false;
@@ -96,12 +129,12 @@ class Cryptor {
 
     while (!enoughBytesForKey) {
       if (currentHash.isNotEmpty) {
-        preHash = Uint8List.fromList(currentHash + key.bytes + salt);
+        preHash = Uint8List.fromList(currentHash + key + salt);
       } else {
-        preHash = Uint8List.fromList(key.bytes + salt);
+        preHash = Uint8List.fromList(key + salt);
       }
 
-      currentHash = md5.convert(preHash).bytes as Uint8List;
+      currentHash = Uint8List.fromList(md5.convert(preHash).bytes);
       concatenatedHashes = Uint8List.fromList(concatenatedHashes + currentHash);
       if (concatenatedHashes.length >= 48) enoughBytesForKey = true;
     }
@@ -110,45 +143,67 @@ class Cryptor {
   }
 
   String encryptString(String decryptedData) {
-    final salt = encrypt.SecureRandom(8).bytes;
-    final derivedKeyAndIV = bytesToKeys(salt, key);
-    final derivedKey = encrypt.Key(derivedKeyAndIV.sublist(0, 32));
-    final derivedIV = encrypt.IV(derivedKeyAndIV.sublist(32, 48));
-    final aes = encrypt.Encrypter(
-      encrypt.AES(derivedKey, mode: encrypt.AESMode.cbc, padding: 'PKCS7'),
+    final salt = _randomBytes(8);
+    final encryptedData = _aes(
+      true,
+      Uint8List.fromList(utf8.encode(decryptedData)),
+      salt,
+      key,
     );
-    final encryptedData = aes.encrypt(decryptedData, iv: derivedIV).bytes;
     final finalEncrypted = utf8.encode('Salted__') + salt + encryptedData;
     return base64.encode(finalEncrypted);
   }
 
   static List<int>? decryptWithKey(
     Uint8List encryptedDataWithSalt,
-    encrypt.Key key,
+    Uint8List key,
   ) {
-    final encryptedData = encrypt.Encrypted.fromBase64(
-      base64.encode(encryptedDataWithSalt.sublist(16)),
-    );
-
-    if ('Salted__' != utf8.decode(encryptedDataWithSalt.sublist(0, 8))) {
+    if (encryptedDataWithSalt.length < 16 ||
+        String.fromCharCodes(encryptedDataWithSalt.take(8)) != 'Salted__') {
       return null;
     }
-
-    final salt = encryptedDataWithSalt.sublist(8, 16);
-    final derivedKeyAndIV = bytesToKeys(salt, key);
-    final derivedKey = encrypt.Key(derivedKeyAndIV.sublist(0, 32));
-    final derivedIV = encrypt.IV(derivedKeyAndIV.sublist(32, 48));
-    final aes = encrypt.Encrypter(
-      encrypt.AES(derivedKey, mode: encrypt.AESMode.cbc),
+    return _aes(
+      false,
+      encryptedDataWithSalt.sublist(16),
+      encryptedDataWithSalt.sublist(8, 16),
+      key,
     );
-    return aes.decryptBytes(encryptedData, iv: derivedIV);
+  }
+
+  static Uint8List _aes(
+    bool encrypting,
+    Uint8List input,
+    Uint8List salt,
+    Uint8List key,
+  ) {
+    final derived = bytesToKeys(salt, key);
+    final cipher =
+        PaddedBlockCipherImpl(PKCS7Padding(), CBCBlockCipher(AESEngine()))
+          ..init(
+            encrypting,
+            PaddedBlockCipherParameters<ParametersWithIV<KeyParameter>, Null>(
+              ParametersWithIV(
+                KeyParameter(derived.sublist(0, 32)),
+                derived.sublist(32, 48),
+              ),
+              null,
+            ),
+          );
+    // PointyCastle's process() assumes at least one input block. PKCS7
+    // encryption of an empty message still produces a full padding block.
+    if (encrypting && input.isEmpty) {
+      final output = Uint8List(cipher.blockSize);
+      cipher.doFinal(input, 0, output, 0);
+      return output;
+    }
+    return cipher.process(input);
   }
 
   List<int>? decrypt(Uint8List encryptedDataWithSalt) {
     return decryptWithKey(encryptedDataWithSalt, key);
   }
 
-  static String? decryptWithKeyString(String encryptedData, encrypt.Key key) {
+  static String? decryptWithKeyString(String encryptedData, Uint8List key) {
     final decryptedBytes = decryptWithKey(base64.decode(encryptedData), key);
     if (decryptedBytes != null) {
       return utf8.decode(decryptedBytes);
@@ -171,9 +226,9 @@ class Cryptor {
 
   /// Decrypt [encryptedData] on a background isolate using this instance's key.
   Future<String?> decryptStringInIsolate(String encryptedData) {
-    final keyBytes = key.bytes;
+    final keyBytes = key;
     return Isolate.run(() {
-      final k = encrypt.Key(Uint8List.fromList(keyBytes));
+      final k = Uint8List.fromList(keyBytes);
       return decryptWithKeyString(encryptedData, k);
     });
   }
