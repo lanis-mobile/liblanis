@@ -160,7 +160,10 @@ class LanisSession {
     }
 
     final loginURL = withLoginUrl ?? await getLoginURL(account, config);
-    await dio.get(loginURL);
+    final loginResponse = await dio.get(loginURL);
+    _checkLoginResponse(loginResponse);
+
+    travelMenu = await getFastTravelMenu();
 
     preventLogoutTimer?.cancel();
     preventLogoutTimer = Timer.periodic(
@@ -168,7 +171,6 @@ class LanisSession {
       (_) => preventLogout(),
     );
 
-    travelMenu = await getFastTravelMenu();
     if (!withoutData) {
       final response = await dio.get(
         'https://start.schulportal.hessen.de/benutzerverwaltung.php?a=userData',
@@ -178,6 +180,27 @@ class LanisSession {
     }
 
     await cryptor.initialize(dio);
+  }
+
+  void _checkLoginResponse(Response<dynamic> response) {
+    var body = response.data;
+    if (body is String && body.trimLeft().startsWith('{')) {
+      try {
+        body = jsonDecode(body);
+      } on FormatException {
+        return;
+      }
+    }
+    if (body is! Map || body['back'] != false) return;
+
+    final message = body['text'];
+    if (message is! String) return;
+    if (message.contains('keine Lernenden hinterlegt')) {
+      throw ParentAccountWithoutLearnersException();
+    }
+    if (message.contains('durch den schulischen Admin gesperrt')) {
+      throw AccountDisabledException();
+    }
   }
 
   Future<void> deAuthenticate() async {
@@ -290,6 +313,15 @@ class LanisSession {
     final response = await dio.get(
       'https://start.schulportal.hessen.de/startseite.php?a=ajax&f=apps',
     );
+    final location = response.headers.value(HttpHeaders.locationHeader);
+    if (response.statusCode == 302 && location != null) {
+      final target = response.requestOptions.uri.resolve(location);
+      if (target.origin == response.requestOptions.uri.origin &&
+          target.path == '/benutzerverwaltung.php' &&
+          target.queryParameters['a'] == 'userChangePassword') {
+        throw PasswordChangeRequiredException();
+      }
+    }
     return jsonDecode(response.data.toString())['entrys'] as List<dynamic>;
   }
 
