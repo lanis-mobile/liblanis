@@ -5,7 +5,8 @@ class StudentStudyGroups {
   StudentStudyGroups({required this.groups, required this.exams});
 
   List<StudentStudyGroupExam> get sortedExams {
-    return exams..sort((a, b) => a.date.compareTo(b.date));
+    return List<StudentStudyGroupExam>.of(exams)
+      ..sort((a, b) => a.date.compareTo(b.date));
   }
 }
 

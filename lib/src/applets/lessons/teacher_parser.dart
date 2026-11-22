@@ -109,8 +109,16 @@ class LessonsTeacherParser extends AppletParser<LessonsTeacherHome> {
       for (final fileDiv in entryRow.getElementsByClassName('file')) {
         final fileName = fileDiv.attributes['data-file']!;
         final fileId = fileDiv.attributes['data-entry']!;
-        final url =
-            'https://start.schulportal.hessen.de/meinunterricht.php?a=downloadFile&id=$courseId&e=$fileId&f=$fileName';
+        final url = Uri.https(
+          'start.schulportal.hessen.de',
+          '/meinunterricht.php',
+          {
+            'a': 'downloadFile',
+            'id': courseId,
+            'e': fileId,
+            'f': fileName,
+          },
+        );
         remoteFiles.add(
           CourseFolderHistoryEntryFile(
             name: fileName,
@@ -119,7 +127,7 @@ class LessonsTeacherParser extends AppletParser<LessonsTeacherHome> {
                 .getElementsByClassName('fa fa-child fileVisibility')[0]
                 .classes
                 .contains('on'),
-            url: Uri.parse(url),
+            url: url,
             entryId: fileId,
           ),
         );
@@ -263,14 +271,13 @@ class LessonsTeacherParser extends AppletParser<LessonsTeacherHome> {
             "Accept-Language": "en-US,en;q=0.5",
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "Content-Length": "296",
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             "Host": "start.schulportal.hessen.de",
             "Origin": "https://start.schulportal.hessen.de",
             "Pragma": "no-cache",
             "Priority": "u=0",
             "Referer":
-                "https://start.schulportal.hessen.de/meinunterricht.php?a=view&id=3",
+                "https://start.schulportal.hessen.de/meinunterricht.php?a=view&id=$book",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "no-cors",
             "Sec-Fetch-Site": "same-origin",

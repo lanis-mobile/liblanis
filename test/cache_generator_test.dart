@@ -71,6 +71,13 @@ Future<int> _read(Uri url, {String? tag, bool visible=true}) async=>1;''',
     },
   );
 
+  test('double results decode through num.toDouble()', () async {
+    final output = await generate(
+      '@Cacheable() Future<double> _read() async=>1.0;',
+    );
+    expect(output, contains('(json as num).toDouble()'));
+  });
+
   for (final entry in <String, String>{
     'public method': '@Cacheable() Future<int> read() async=>1;',
     'sync method': '@Cacheable() int _read()=>1;',
