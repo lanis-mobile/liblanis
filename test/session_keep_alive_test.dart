@@ -29,6 +29,8 @@ class _Adapter implements HttpClientAdapter {
   int homeRequests = 0;
   int keepAliveRequests = 0;
   final keepAliveReceived = Completer<void>();
+  Completer<void>? pauseLogin;
+  Completer<void>? loginStarted;
 
   @override
   Future<ResponseBody> fetch(
@@ -42,6 +44,14 @@ class _Adapter implements HttpClientAdapter {
       if (!keepAliveReceived.isCompleted) keepAliveReceived.complete();
     }
     if (options.uri.path == '/') homeRequests++;
+    if (options.uri.path == '/test-login') {
+      if (loginStarted != null && !loginStarted!.isCompleted) {
+        loginStarted!.complete();
+      }
+      if (pauseLogin != null) {
+        await pauseLogin!.future;
+      }
+    }
     return ResponseBody.fromString(
       options.uri.path == '/startseite.php' ? '{"entrys":[]}' : '{}',
       keepAlive ? status : (options.uri.path == '/' ? homeStatus : 200),
@@ -220,5 +230,77 @@ void main() {
     await disconnected.timeout(const Duration(seconds: 1));
     expect(adapter.keepAliveRequests, 1);
     expect(session.connectionChecker.status, ConnectionStatus.disconnected);
+  });
+
+  test('authenticate cancels previous keep-alive timer before re-login', () async {
+    final existingTimer = _ManualTimer((_) {});
+    session.preventLogoutTimer = existingTimer;
+    adapter.loginStarted = Completer<void>();
+    adapter.pauseLogin = Completer<void>();
+
+    final auth = session.authenticate(
+      withoutData: true,
+      withLoginUrl: 'https://start.schulportal.hessen.de/test-login',
+    );
+    await adapter.loginStarted!.future;
+    expect(existingTimer.isActive, isFalse);
+
+    adapter.pauseLogin!.complete();
+    await auth;
+  });
+
+  test(
+    'deAuthenticate during in-flight authenticate does not start a leaked timer',
+    () async {
+      adapter.loginStarted = Completer<void>();
+      adapter.pauseLogin = Completer<void>();
+
+      final auth = session.authenticate(
+        withoutData: true,
+        withLoginUrl: 'https://start.schulportal.hessen.de/test-login',
+      );
+      await adapter.loginStarted!.future;
+      await session.deAuthenticate();
+      adapter.pauseLogin!.complete();
+      await auth;
+
+      expect(session.preventLogoutTimer, isNull);
+    },
+  );
+
+  test(
+    'dispose during in-flight authenticate does not start a leaked timer',
+    () async {
+      adapter.loginStarted = Completer<void>();
+      adapter.pauseLogin = Completer<void>();
+
+      final auth = session.authenticate(
+        withoutData: true,
+        withLoginUrl: 'https://start.schulportal.hessen.de/test-login',
+      );
+      await adapter.loginStarted!.future;
+      await session.dispose();
+      adapter.pauseLogin!.complete();
+      try {
+        await auth;
+      } catch (_) {
+        // Closing Dio mid-flight may fail the in-flight request; either way
+        // no timer may be left running.
+      }
+
+      expect(session.preventLogoutTimer, isNull);
+    },
+  );
+
+  test('authenticate on an already-disposed session throws StateError', () async {
+    await session.dispose();
+    await expectLater(
+      session.authenticate(
+        withoutData: true,
+        withLoginUrl: 'https://start.schulportal.hessen.de/test-login',
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(session.preventLogoutTimer, isNull);
   });
 }

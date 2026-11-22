@@ -80,6 +80,8 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
   bool isEmpty = true;
   Timer? _refreshTimer;
   Timer? _cacheExpiryTimer;
+  Future<void>? _activeCachedFetch;
+  CacheReadPolicy? _activeCachedFetchPolicy;
 
   @override
   AppletResponseStream<T> get stream => _stream;
@@ -123,11 +125,30 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
 
   T presentCachedHome(T value) => value;
 
-  Future<void> fetchCachedData({CacheReadPolicy? policy}) async {
+  Future<void> fetchCachedData({CacheReadPolicy? policy}) {
+    final active = _activeCachedFetch;
+    if (active != null && _activeCachedFetchPolicy == policy) {
+      return active;
+    }
+    final flight = _fetchCachedData(policy: policy);
+    _activeCachedFetch = flight;
+    _activeCachedFetchPolicy = policy;
+    return flight.whenComplete(() {
+      if (identical(_activeCachedFetch, flight)) {
+        _activeCachedFetch = null;
+        _activeCachedFetchPolicy = null;
+      }
+    });
+  }
+
+  Future<void> _fetchCachedData({
+    CacheReadPolicy? policy,
+    bool secondTry = false,
+  }) async {
     if (_controller.isClosed) return;
     var previous = latestResponse;
     var valid = previous?.expiresAt?.isAfter(DateTime.now()) ?? false;
-    if (!valid && policy != CacheReadPolicy.cacheOnly) {
+    if (!secondTry && !valid && policy != CacheReadPolicy.cacheOnly) {
       try {
         final cached = await cacheService.readCacheFor(
           accountId: cacheAccountId,
@@ -153,18 +174,93 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
       }
     }
     if (_controller.isClosed) return;
-    addResponse(
-      FetcherResponse<T>(
-        status: FetcherStatus.fetching,
-        error: null,
-        content: valid ? previous?.content : null,
-        contentStatus: previous?.contentStatus ?? ContentStatus.online,
-        fetchedAt: previous?.fetchedAt,
-        expiresAt: previous?.expiresAt,
-      ),
-    );
+    if (!secondTry) {
+      addResponse(
+        FetcherResponse<T>(
+          status: FetcherStatus.fetching,
+          error: null,
+          content: valid ? previous?.content : null,
+          contentStatus: previous?.contentStatus ?? ContentStatus.online,
+          fetchedAt: previous?.fetchedAt,
+          expiresAt: previous?.expiresAt,
+        ),
+      );
+    }
+    bool hasValidPreviousCache() =>
+        valid &&
+        previous?.content != null &&
+        (previous?.expiresAt?.isAfter(DateTime.now()) ?? false);
+
+    void emitCachedFallback(Object error, StackTrace stack) {
+      addResponse(
+        FetcherResponse<T>(
+          status: FetcherStatus.done,
+          content: previous!.content,
+          contentStatus: ContentStatus.offline,
+          fetchedAt: previous.fetchedAt,
+          responseAt: DateTime.now(),
+          expiresAt: previous.expiresAt,
+          error: ExceptionWithStackTrace(exception: error, stackTrace: stack),
+        ),
+      );
+    }
+
+    final MaybeCacheResult<T> result;
     try {
-      final result = await loadCachedHome(policy: policy);
+      result = await loadCachedHome(policy: policy);
+    } catch (error, stack) {
+      if (CacheService.isTransportFailure(error) && hasValidPreviousCache()) {
+        emitCachedFallback(error, stack);
+        return;
+      }
+      if (!secondTry &&
+          policy != CacheReadPolicy.cacheOnly &&
+          error is! CacheUnavailableException &&
+          error is! ConfigurationException &&
+          error is! NotSupportedException &&
+          !CacheService.isTransportFailure(error)) {
+        try {
+          await ctx.session.authenticate();
+        } catch (authError, authStack) {
+          if (CacheService.isTransportFailure(authError) &&
+              hasValidPreviousCache()) {
+            emitCachedFallback(authError, authStack);
+            return;
+          }
+          _reportUnexpectedError(authError, authStack);
+          addResponse(
+            FetcherResponse<T>(
+              status: FetcherStatus.error,
+              contentStatus: CacheService.isTransportFailure(authError)
+                  ? ContentStatus.offline
+                  : ContentStatus.online,
+              error: ExceptionWithStackTrace(
+                exception: authError,
+                stackTrace: authStack,
+              ),
+            ),
+          );
+          return;
+        }
+        await _fetchCachedData(policy: policy, secondTry: true);
+        return;
+      }
+      _reportUnexpectedError(error, stack);
+      addResponse(
+        FetcherResponse<T>(
+          status: FetcherStatus.error,
+          contentStatus:
+              error is CacheUnavailableException ||
+                  CacheService.isTransportFailure(error)
+              ? ContentStatus.offline
+              : ContentStatus.online,
+          error: ExceptionWithStackTrace(exception: error, stackTrace: stack),
+        ),
+      );
+      return;
+    }
+
+    try {
       addResponse(
         FetcherResponse<T>(
           status: FetcherStatus.done,
@@ -180,30 +276,11 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
       );
       isEmpty = false;
     } catch (error, stack) {
-      if (CacheService.isTransportFailure(error) &&
-          valid &&
-          previous?.content != null &&
-          (previous?.expiresAt?.isAfter(DateTime.now()) ?? false)) {
-        addResponse(
-          FetcherResponse<T>(
-            status: FetcherStatus.done,
-            content: previous!.content,
-            contentStatus: ContentStatus.offline,
-            fetchedAt: previous.fetchedAt,
-            responseAt: DateTime.now(),
-            expiresAt: previous.expiresAt,
-            error: ExceptionWithStackTrace(exception: error, stackTrace: stack),
-          ),
-        );
-        return;
-      }
       _reportUnexpectedError(error, stack);
       addResponse(
         FetcherResponse<T>(
           status: FetcherStatus.error,
-          contentStatus:
-              error is CacheUnavailableException ||
-                  CacheService.isTransportFailure(error)
+          contentStatus: result.cacheStatus == CacheStatus.cache
               ? ContentStatus.offline
               : ContentStatus.online,
           error: ExceptionWithStackTrace(exception: error, stackTrace: stack),
