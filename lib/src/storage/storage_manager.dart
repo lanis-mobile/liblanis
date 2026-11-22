@@ -68,17 +68,73 @@ class StorageManager {
         .substring(0, 12);
   }
 
-  String resolvePath(String url, String filename) {
-    final urlHash = generateUniqueHash(url);
-    if (pathLayout != null) {
-      return pathLayout!(
-        cacheRoot: getDocumentCacheDirectory().path,
-        accountId: accountId,
-        urlHash: urlHash,
-        filename: filename,
+  static String _validateFilename(String filename) {
+    if (filename.isEmpty ||
+        filename == '.' ||
+        filename == '..' ||
+        filename.contains('\x00') ||
+        filename.contains('/') ||
+        filename.contains(r'\')) {
+      throw ArgumentError.value(
+        filename,
+        'filename',
+        'Invalid cache filename',
       );
     }
-    return p.join(getDocumentCacheDirectory().path, urlHash, filename);
+    return filename;
+  }
+
+  static bool _isAllowedRedirectHost(String originalHost, String targetHost) {
+    final normalizedTarget = targetHost.toLowerCase();
+    if (normalizedTarget.isEmpty) return false;
+    final normalizedOriginal = originalHost.toLowerCase();
+    return normalizedTarget == normalizedOriginal ||
+        normalizedTarget == 'schulportal.hessen.de' ||
+        normalizedTarget.endsWith('.schulportal.hessen.de');
+  }
+
+  static Uri _resolveRedirectUri(Uri baseUri, String location) {
+    final trimmed = location.trim();
+    if (trimmed.isEmpty) {
+      throw NetworkException('Empty redirect location');
+    }
+    final Uri resolved;
+    try {
+      resolved = baseUri.resolve(trimmed);
+    } on FormatException catch (error, stack) {
+      Error.throwWithStackTrace(
+        NetworkException.fromError(error, stack),
+        stack,
+      );
+    }
+    if (resolved.scheme != 'https' ||
+        !_isAllowedRedirectHost(baseUri.host, resolved.host)) {
+      throw NetworkException('Refusing untrusted redirect location: $location');
+    }
+    return resolved;
+  }
+
+  String resolvePath(String url, String filename) {
+    final safeFilename = _validateFilename(filename);
+    final urlHash = generateUniqueHash(url);
+    final cacheRoot = p.normalize(getDocumentCacheDirectory().path);
+    if (pathLayout != null) {
+      return pathLayout!(
+        cacheRoot: cacheRoot,
+        accountId: accountId,
+        urlHash: urlHash,
+        filename: safeFilename,
+      );
+    }
+    final resolved = p.normalize(p.join(cacheRoot, urlHash, safeFilename));
+    if (!p.isWithin(cacheRoot, resolved)) {
+      throw ArgumentError.value(
+        filename,
+        'filename',
+        'Resolved path escapes document cache directory',
+      );
+    }
+    return resolved;
   }
 
   Future<bool> doesFileExist(String url, String filename) async {
@@ -118,18 +174,15 @@ class StorageManager {
       ),
     );
 
-    var currentUrl = url;
     if (response.statusCode == 302 && followRedirects) {
       final location = response.headers.value('location');
       if (location != null) {
-        if (location.startsWith('https')) {
-          currentUrl = location;
-        } else {
-          final originalUrl = Uri.parse(url);
-          currentUrl = 'https://${originalUrl.host}/$location';
-        }
-        response = await session.dio.get(
-          currentUrl,
+        final baseUri = response.realUri.hasScheme
+            ? response.realUri
+            : Uri.parse(url);
+        final redirectUri = _resolveRedirectUri(baseUri, location);
+        response = await session.dio.getUri(
+          redirectUri,
           options: Options(
             responseType: ResponseType.bytes,
             followRedirects: false,
@@ -147,20 +200,42 @@ class StorageManager {
 
     final file = File(savePath);
     final raf = file.openSync(mode: FileMode.write);
-    raf.writeFromSync(response.data as List<int>);
-    await raf.close();
+    var closed = false;
+    try {
+      raf.writeFromSync(response.data as List<int>);
+      await raf.close();
+      closed = true;
+    } catch (_) {
+      if (!closed) {
+        await raf.close();
+      }
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+      rethrow;
+    }
 
-    await _enforceLimits();
+    await _enforceLimits(protectPath: savePath);
     if (onDownloaded != null) {
       await onDownloaded!(savePath);
     }
     return savePath;
   }
 
-  Future<void> deleteFilesOlderThan(Duration duration) async {
+  Future<void> deleteFilesOlderThan(
+    Duration duration, {
+    String? protectPath,
+  }) async {
+    final normalizedProtect = protectPath == null
+        ? null
+        : p.normalize(protectPath);
     final tempDir = getDocumentCacheDirectory();
     for (final entity in tempDir.listSync(recursive: true)) {
       if (entity is File) {
+        if (normalizedProtect != null &&
+            p.normalize(entity.path) == normalizedProtect) {
+          continue;
+        }
         final stat = entity.statSync();
         if (DateTime.now().difference(stat.modified) > duration) {
           entity.deleteSync();
@@ -176,13 +251,19 @@ class StorageManager {
     }
   }
 
-  Future<void> _enforceLimits() async {
+  Future<void> _enforceLimits({String? protectPath}) async {
     if (config.storageMaxAge != null) {
-      await deleteFilesOlderThan(config.storageMaxAge!);
+      await deleteFilesOlderThan(
+        config.storageMaxAge!,
+        protectPath: protectPath,
+      );
     }
     final maxBytes = config.storageMaxBytes;
     if (maxBytes == null) return;
 
+    final normalizedProtect = protectPath == null
+        ? null
+        : p.normalize(protectPath);
     final dir = getDocumentCacheDirectory();
     final files = dir
         .listSync(recursive: true)
@@ -194,6 +275,10 @@ class StorageManager {
     var total = files.fold<int>(0, (sum, e) => sum + e.file.lengthSync());
     for (final entry in files) {
       if (total <= maxBytes) break;
+      if (normalizedProtect != null &&
+          p.normalize(entry.file.path) == normalizedProtect) {
+        continue;
+      }
       total -= entry.file.lengthSync();
       entry.file.deleteSync();
     }
