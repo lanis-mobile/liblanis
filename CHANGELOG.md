@@ -19,6 +19,7 @@
   `TypeError`/`FormatException`; reject empty ciphertext in `Cryptor`.
 * Fix data storage search on iOS (no `GET` request body) and validate its response.
 
+
 ## 0.3.1
 
 * Report distinct login errors for parent accounts without learners, disabled
