@@ -6,6 +6,7 @@ import '../cache/annotation.dart';
 import '../cache/service.dart';
 import '../cache/types.dart';
 import '../lanis_client.dart';
+import '../session/session.dart';
 import 'applet_context.dart';
 import 'definition.dart';
 
@@ -141,6 +142,21 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
     });
   }
 
+  static int? _authGenerationOf(LanisSession session) {
+    try {
+      return session.authGeneration;
+    } on NoSuchMethodError {
+      return null;
+    }
+  }
+
+  Future<void> _reauthenticate(int? observedGeneration) {
+    if (observedGeneration != null) {
+      return ctx.session.reauthenticateIfStale(observedGeneration);
+    }
+    return ctx.session.authenticate();
+  }
+
   Future<void> _fetchCachedData({
     CacheReadPolicy? policy,
     bool secondTry = false,
@@ -205,6 +221,7 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
       );
     }
 
+    final authGeneration = _authGenerationOf(ctx.session);
     final MaybeCacheResult<T> result;
     try {
       result = await loadCachedHome(policy: policy);
@@ -220,7 +237,7 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
           error is! NotSupportedException &&
           !CacheService.isTransportFailure(error)) {
         try {
-          await ctx.session.authenticate();
+          await _reauthenticate(authGeneration);
         } catch (authError, authStack) {
           if (CacheService.isTransportFailure(authError) &&
               hasValidPreviousCache()) {
@@ -419,6 +436,7 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
         ),
       );
 
+      final authGeneration = _authGenerationOf(ctx.session);
       try {
         final data = await _getHome();
         addResponse(
@@ -448,7 +466,7 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
         }
         if (!secondTry) {
           try {
-            await ctx.session.authenticate();
+            await _reauthenticate(authGeneration);
           } catch (authError, authStack) {
             _reportUnexpectedError(authError, authStack);
             addResponse(

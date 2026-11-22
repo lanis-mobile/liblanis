@@ -26,14 +26,30 @@ class DataStorageParser
   }
 
   Future<dynamic> searchFiles(String query) async {
-    final response = await ctx.session.dio.get(
-      "https://start.schulportal.hessen.de/dateispeicher.php",
-      queryParameters: {"q": query, "a": "searchFiles"},
-      data: {"q": query, "a": "searchFiles"},
-      options: Options(contentType: "application/x-www-form-urlencoded"),
-    );
-    final data = jsonDecode(response.data);
-    return data[0];
+    final Response<dynamic> response;
+    try {
+      response = await ctx.session.dio.get(
+        'https://start.schulportal.hessen.de/dateispeicher.php',
+        queryParameters: {'q': query, 'a': 'searchFiles'},
+      );
+    } on DioException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
+    }
+    if (response.statusCode == 302) {
+      throw UnauthorizedException('Data storage search redirected');
+    }
+    final dynamic data;
+    if (response.data is List) {
+      data = response.data;
+    } else {
+      final body = response.data?.toString() ?? '';
+      if (body.trim().isEmpty) return const <dynamic>[];
+      data = jsonDecode(body);
+    }
+    if (data is List && data.isNotEmpty) {
+      return data[0];
+    }
+    return const <dynamic>[];
   }
 
   Future<(List<FileNode>, List<FolderNode>)> getNode(int nodeID) async {

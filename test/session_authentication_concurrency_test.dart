@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:html/dom.dart';
 import 'package:pointycastle/export.dart';
 import 'package:liblanis/liblanis.dart';
 import 'package:liblanis/src/session/cryptor.dart';
@@ -236,4 +237,40 @@ void main() {
     expect(cryptor.handshakes, 2);
     expect(adapter.homeRequests, 2);
   });
+
+  test(
+    'reauthenticateIfStale skips re-login after authGeneration advances',
+    () async {
+      cryptor.pauseFirst = false;
+      final observed = session.authGeneration;
+      await authenticate();
+      expect(session.authGeneration, observed + 1);
+      expect(cryptor.handshakes, 1);
+
+      await session.reauthenticateIfStale(observed);
+      expect(cryptor.handshakes, 1);
+      expect(adapter.homeRequests, 1);
+    },
+  );
+
+  test(
+    'getFastTravelMenu maps unexpected 302 redirects to UnauthorizedException',
+    () async {
+      adapter.appsRedirect = 'index.php';
+      await expectLater(
+        session.getFastTravelMenu(),
+        throwsA(isA<UnauthorizedException>()),
+      );
+    },
+  );
+
+  test(
+    'parseAccountType throws UnknownException when navbar icon is absent',
+    () {
+      expect(
+        () => session.parseAccountType(Document.html('<html><body></body></html>')),
+        throwsA(isA<UnknownException>()),
+      );
+    },
+  );
 }

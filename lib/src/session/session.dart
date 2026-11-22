@@ -29,8 +29,14 @@ class LanisSession {
   final Dio dio = Dio();
   Timer? preventLogoutTimer;
   Future<void>? _authentication;
+  bool _authenticationWithoutData = false;
+  String? _authenticationWithLoginUrl;
   bool _disposed = false;
   int _lifecycleGeneration = 0;
+  int _authGeneration = 0;
+
+  /// Incremented after each successful authentication.
+  int get authGeneration => _authGeneration;
 
   Map<String, String> userData = {};
   AccountType? _accountType;
@@ -108,6 +114,26 @@ class LanisSession {
         status != null && (status == 200 || status == 302 || status == 503);
   }
 
+  /// Re-authenticates once if the session has not already been refreshed since
+  /// [observedGeneration]. Concurrent callers observing the same stale
+  /// generation share a single in-flight re-authentication instead of wiping
+  /// the fresh cookie jar and encryption key back-to-back.
+  Future<void> reauthenticateIfStale(int observedGeneration) async {
+    if (_authGeneration != observedGeneration) return;
+    final inFlight = _authentication;
+    if (inFlight != null &&
+        _authenticationWithLoginUrl == null &&
+        !_authenticationWithoutData) {
+      await inFlight;
+      return;
+    }
+    if (inFlight != null && _authenticationWithLoginUrl == null) {
+      await inFlight;
+      if (_authGeneration != observedGeneration) return;
+    }
+    await authenticate();
+  }
+
   Future<void> authenticate({
     bool withoutData = false,
     String? withLoginUrl,
@@ -126,6 +152,8 @@ class LanisSession {
       withLoginUrl: withLoginUrl,
     );
     _authentication = authentication;
+    _authenticationWithoutData = withoutData;
+    _authenticationWithLoginUrl = withLoginUrl;
     try {
       await authentication;
     } on LanisException {
@@ -136,6 +164,8 @@ class LanisSession {
       throw UnknownException(e.message ?? e.toString());
     } finally {
       _authentication = null;
+      _authenticationWithoutData = false;
+      _authenticationWithLoginUrl = null;
     }
   }
 
@@ -186,11 +216,25 @@ class LanisSession {
       final response = await dio.get(
         'https://start.schulportal.hessen.de/benutzerverwaltung.php?a=userData',
       );
-      userData = parseUserData(parse(response.data));
-      _accountType = parseAccountType(parse(response.data));
+      if (response.statusCode == 302) {
+        final location = response.headers.value(HttpHeaders.locationHeader);
+        if (location != null) {
+          final target = response.requestOptions.uri.resolve(location);
+          if (target.origin == response.requestOptions.uri.origin &&
+              target.path == '/benutzerverwaltung.php' &&
+              target.queryParameters['a'] == 'userChangePassword') {
+            throw PasswordChangeRequiredException();
+          }
+        }
+        throw UnauthorizedException('User data request redirected');
+      }
+      final document = parse(response.data);
+      userData = parseUserData(document);
+      _accountType = parseAccountType(document);
     }
 
     await cryptor.initialize(dio);
+    _authGeneration++;
   }
 
   void _checkLoginResponse(Response<dynamic> response) {
@@ -327,15 +371,26 @@ class LanisSession {
       'https://start.schulportal.hessen.de/startseite.php?a=ajax&f=apps',
     );
     final location = response.headers.value(HttpHeaders.locationHeader);
-    if (response.statusCode == 302 && location != null) {
-      final target = response.requestOptions.uri.resolve(location);
-      if (target.origin == response.requestOptions.uri.origin &&
-          target.path == '/benutzerverwaltung.php' &&
-          target.queryParameters['a'] == 'userChangePassword') {
-        throw PasswordChangeRequiredException();
+    if (response.statusCode == 302) {
+      if (location != null) {
+        final target = response.requestOptions.uri.resolve(location);
+        if (target.origin == response.requestOptions.uri.origin &&
+            target.path == '/benutzerverwaltung.php' &&
+            target.queryParameters['a'] == 'userChangePassword') {
+          throw PasswordChangeRequiredException();
+        }
       }
+      throw UnauthorizedException('Fast-travel menu request redirected');
     }
-    return jsonDecode(response.data.toString())['entrys'] as List<dynamic>;
+    final body = response.data?.toString() ?? '';
+    if (body.trim().isEmpty) {
+      throw UnknownException('Empty fast-travel menu response');
+    }
+    final decoded = jsonDecode(body);
+    if (decoded is! Map || decoded['entrys'] is! List) {
+      throw UnknownException('Unexpected fast-travel menu response');
+    }
+    return decoded['entrys'] as List<dynamic>;
   }
 
   Map<String, String> parseUserData(Document document) {
@@ -347,18 +402,26 @@ class LanisSession {
 
     final result = <String, String>{};
     for (final row in userDataTableBody.querySelectorAll('tr')) {
+      if (row.children.length < 2) continue;
       var key = row.children[0].text.trim();
       final value = row.children[1].text.trim();
-      key = key.substring(0, key.length - 1).toLowerCase();
-      result[key] = value;
+      if (key.isEmpty) continue;
+      if (key.endsWith(':')) {
+        key = key.substring(0, key.length - 1);
+      }
+      result[key.toLowerCase()] = value;
     }
     return result;
   }
 
   AccountType parseAccountType(Document document) {
-    final iconClassList = document
-        .querySelector('.nav.navbar-nav.navbar-right>li>a>i')!
-        .classes;
+    final iconElement = document.querySelector(
+      '.nav.navbar-nav.navbar-right>li>a>i',
+    );
+    if (iconElement == null) {
+      throw UnknownException('Missing account type icon in user data page');
+    }
+    final iconClassList = iconElement.classes;
     if (iconClassList.contains('fa-child')) {
       return AccountType.student;
     } else if (iconClassList.contains('fa-user-circle')) {
