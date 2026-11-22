@@ -302,12 +302,48 @@ class LanisDatabase implements CacheStore {
     );
     final id = _db.lastInsertRowId;
     final secretKey = _passwordKey(id);
-    await secretStore!.write(secretKey, password);
-    _db.execute('UPDATE accounts SET password_secret_key = ? WHERE id = ?', [
-      secretKey,
-      id,
-    ]);
+    try {
+      await secretStore!.write(secretKey, password);
+      _db.execute('UPDATE accounts SET password_secret_key = ? WHERE id = ?', [
+        secretKey,
+        id,
+      ]);
+    } catch (_) {
+      try {
+        _db.execute('DELETE FROM accounts WHERE id = ?', [id]);
+      } catch (_) {}
+      try {
+        await secretStore!.delete(secretKey);
+      } catch (_) {}
+      rethrow;
+    }
     return id;
+  }
+
+  /// Inserts a backing account row into an in-memory database for ephemeral
+  /// sessions so foreign-key-constrained settings, cache, and offline-data
+  /// writes succeed without persisting credentials.
+  int insertEphemeralAccount({
+    required int schoolId,
+    required String username,
+    AccountType? accountType,
+  }) {
+    if (!isInMemory) {
+      throw StateError(
+        'insertEphemeralAccount is only supported on in-memory databases',
+      );
+    }
+    final now = DateTime.now().toIso8601String();
+    _db.execute(
+      '''
+      INSERT INTO accounts (
+        school_id, school_name, username, account_type,
+        password_secret_key, last_login, creation_date
+      ) VALUES (?, '', ?, ?, '', NULL, ?)
+      ''',
+      [schoolId, username, accountType?.name, now],
+    );
+    return _db.lastInsertRowId;
   }
 
   Future<ClearTextAccount?> getAccount(int id) async {

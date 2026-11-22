@@ -264,6 +264,66 @@ void main() {
       expect(client.session, isNotNull);
       expect(client.session?.account.username, 'u');
     });
+
+    test(
+      'ephemeral client supports structured cache, account settings, and offline data without FK errors',
+      () async {
+        final client = EasyLanisClient.ephemeral(
+          schoolId: 5182,
+          username: 'u',
+          password: 'p',
+          httpAdapter: OfflineHttpAdapter(),
+        );
+        addTearDown(client.dispose);
+
+        expect(await client.accounts.list(), isEmpty);
+
+        try {
+          await client.login();
+        } on LanisException {
+          // Offline adapter throws; session and parsers are still initialized.
+        }
+
+        final accountId = client.session!.account.localId;
+        client.database.setAccountSetting(accountId, 'theme', 'dark');
+        expect(client.database.getAccountSetting(accountId, 'theme'), 'dark');
+
+        client.database.setAppletOfflineData(
+          accountId: accountId,
+          appletId: 'vertretungsplan.php',
+          json: '{}',
+        );
+        expect(
+          client.database.getAppletOfflineData(
+            accountId: accountId,
+            appletId: 'vertretungsplan.php',
+          ),
+          isNotNull,
+        );
+
+        final cache = CacheService(client.database);
+        final request = CacheRequest<String>(
+          operation: 'test.ephemeral',
+          arguments: const {},
+          codec: CacheCodec<String>(
+            id: 'string:v1',
+            encode: (value) => value,
+            decode: (json) => json as String,
+          ),
+          maxAge: const Duration(hours: 1),
+        );
+        await cache.execute(
+          accountId: accountId,
+          request: request,
+          load: () async => 'ok',
+        );
+        final cached = await cache.readCacheFor(
+          accountId: accountId,
+          request: request,
+        );
+        expect(cached.data, 'ok');
+      },
+    );
   });
 
   group('EasyLanisClient.open', () {

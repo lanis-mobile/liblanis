@@ -169,5 +169,64 @@ void main() {
       expect(db.listAppletOfflineData(), hasLength(2));
       expect(db.listAppletOfflineData(accountId: a), hasLength(1));
     });
+
+    test(
+      'addAccount rolls back the SQLite row when SecretStore.write fails',
+      () async {
+        final store = _FlakySecretStore(failWrites: true, failDeletes: true);
+        final flakyDb = LanisDatabase.open(secretStore: store);
+        addTearDown(flakyDb.dispose);
+
+        await expectLater(
+          flakyDb.addAccount(
+            schoolId: 100,
+            schoolName: 'Flaky School',
+            username: 'alice',
+            password: 'secret',
+          ),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(await flakyDb.listAccounts(), isEmpty);
+
+        // Retrying after the keychain recovers must not throw AccountAlreadyExistsException.
+        store.failWrites = false;
+        store.failDeletes = false;
+        final id = await flakyDb.addAccount(
+          schoolId: 100,
+          schoolName: 'Flaky School',
+          username: 'alice',
+          password: 'secret',
+        );
+        final account = await flakyDb.getAccount(id);
+        expect(account?.password, 'secret');
+      },
+    );
   });
+}
+
+class _FlakySecretStore implements SecretStore {
+  final Map<String, String> _values = {};
+  bool failWrites;
+  bool failDeletes;
+
+  _FlakySecretStore({this.failWrites = false, this.failDeletes = false});
+
+  @override
+  Future<String?> read(String key) async => _values[key];
+
+  @override
+  Future<void> write(String key, String value) async {
+    if (failWrites) {
+      _values[key] = value;
+      throw StateError('keychain locked');
+    }
+    _values[key] = value;
+  }
+
+  @override
+  Future<void> delete(String key) async {
+    if (failDeletes) throw StateError('keychain delete failed');
+    _values.remove(key);
+  }
 }

@@ -116,6 +116,10 @@ class EasyLanisClient {
   }
 
   /// Credentials in memory only — no persistent accounts (smoke tests).
+  ///
+  /// Seeds a backing row in the private in-memory [database] (without storing
+  /// the password there) so account settings, structured cache, and offline
+  /// snapshots satisfy SQLite foreign keys. [accounts.list] still returns `[]`.
   factory EasyLanisClient.ephemeral({
     required int schoolId,
     required String username,
@@ -135,12 +139,17 @@ class EasyLanisClient {
       path: config.databasePath,
       secretStore: config.secretStore,
     );
+    final ephemeralId = db.insertEphemeralAccount(
+      schoolId: schoolId,
+      username: username,
+      accountType: accountType,
+    );
     return EasyLanisClient._(
       config: config,
       db: db,
       ephemeral: true,
       ephemeralAccount: ClearTextAccount(
-        localId: 1,
+        localId: ephemeralId,
         schoolID: schoolId,
         schoolName: '',
         username: username,
