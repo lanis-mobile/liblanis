@@ -8,6 +8,13 @@ class LessonPupil {
   final String name;
 
   const LessonPupil({required this.id, required this.name});
+
+  @override
+  bool operator ==(Object other) =>
+      other is LessonPupil && other.id == id && other.name == name;
+
+  @override
+  int get hashCode => Object.hash(id, name);
 }
 
 /// The complete parent lessons page, grouped by child.

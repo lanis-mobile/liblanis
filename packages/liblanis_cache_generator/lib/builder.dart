@@ -202,7 +202,10 @@ class CacheGenerator extends Generator {
     final t = _interface(type);
     final name = t.element.name;
     final display = t.getDisplayString().replaceFirst(RegExp(r'\?$'), '');
-    if (['String', 'int', 'double', 'bool', 'num'].contains(name)) {
+    if (name == 'double') {
+      return '($value as num).toDouble()';
+    }
+    if (['String', 'int', 'bool', 'num'].contains(name)) {
       return '$value as $display';
     }
     if (name == 'Uri') return 'Uri.parse($value as String)';

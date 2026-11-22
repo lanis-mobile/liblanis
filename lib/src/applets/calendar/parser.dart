@@ -135,7 +135,14 @@ class CalendarParser extends AppletParser<List<CalendarEvent>> {
           'start': start,
           'end': end,
         },
-        data: 'f=getEvents&start=$start&end=$end&s=$searchQuery',
+        data: Uri(
+          queryParameters: {
+            'f': 'getEvents',
+            'start': start,
+            'end': end,
+            's': searchQuery,
+          },
+        ).query,
         options: Options(
           headers: {
             'Accept': '*/*',

@@ -134,7 +134,7 @@ class KnownParticipant {
 
   @override
   bool operator ==(Object other) {
-    return other is KnownParticipant && other.hashCode == hashCode;
+    return other is KnownParticipant && other.name == name;
   }
 }
 
@@ -194,11 +194,7 @@ class OverviewEntry {
 
   @override
   bool operator ==(Object other) {
-    if (other is OverviewEntry) {
-      return hashCode == other.hashCode;
-    }
-
-    return false;
+    return other is OverviewEntry && other.id == id;
   }
 
   @override

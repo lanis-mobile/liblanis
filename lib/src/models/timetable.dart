@@ -76,7 +76,6 @@ class TimetableSubject {
   }
 
   @override
-  // ignore: hash_and_equals
   bool operator ==(Object other) {
     if (other is TimetableSubject) {
       return id == other.id &&
@@ -92,6 +91,20 @@ class TimetableSubject {
     }
     return false;
   }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    raum,
+    lehrer,
+    badge,
+    calendarWeekParity,
+    duration,
+    stunde,
+    startTime,
+    endTime,
+  );
 }
 
 typedef TimetableDay = List<TimetableSubject>;

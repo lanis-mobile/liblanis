@@ -107,11 +107,11 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
         ),
       );
 
-      return bool.parse(response.data);
-    } on SocketException {
-      throw NetworkException();
-    } on DioException {
-      throw NetworkException();
+      return _parseBoolResponse(response.data);
+    } on SocketException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
+    } on DioException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
     } catch (e, stack) {
       if (e is LanisException) rethrow;
       Error.throwWithStackTrace(
@@ -144,11 +144,11 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
         ),
       );
 
-      return bool.parse(response.data);
-    } on SocketException {
-      throw NetworkException();
-    } on DioException {
-      throw NetworkException();
+      return _parseBoolResponse(response.data);
+    } on SocketException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
+    } on DioException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
     } catch (e, stack) {
       if (e is LanisException) rethrow;
       Error.throwWithStackTrace(
@@ -298,15 +298,20 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
         replies: replies,
         msgLastRefresh: encryptedJSON['time'],
       );
-    } on SocketException {
-      throw NetworkException();
-    } on DioException {
-      throw NetworkException();
+    } on SocketException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
+    } on DioException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
     } on LanisException {
       rethrow;
     } catch (e, stack) {
       Error.throwWithStackTrace(UnknownException(e.runtimeType.toString()), stack);
     }
+  }
+
+  static bool _parseBoolResponse(dynamic data) {
+    if (data is bool) return data;
+    return bool.parse(data.toString());
   }
 
   Future<ConversationsRefreshResult> refreshConversation(
@@ -353,7 +358,7 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
       );
     } catch (e, stack) {
       if (e is SocketException || e is DioException) {
-        throw NetworkException();
+        Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
       } else if (e is LanisException) {
         rethrow;
       } else {
@@ -420,10 +425,10 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
         success: jsonDecode['back'],
         messageId: jsonDecode['id'],
       );
-    } on SocketException {
-      throw NetworkException();
-    } on DioException {
-      throw NetworkException();
+    } on SocketException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
+    } on DioException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
     } on LanisException {
       rethrow;
     } catch (e, stack) {
@@ -499,10 +504,10 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
         success: decoded['back'],
         id: decoded['id'],
       ); // "back" should be bool, id is Uniquid
-    } on SocketException {
-      throw NetworkException();
-    } on DioException {
-      throw NetworkException();
+    } on SocketException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
+    } on DioException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
     } on LanisException {
       rethrow;
     } catch (e, stack) {
@@ -540,10 +545,10 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
       cachedCanChooseType = document.querySelector('#MsgOptions') != null;
 
       return cachedCanChooseType!;
-    } on SocketException {
-      throw NetworkException();
-    } on DioException {
-      throw NetworkException();
+    } on SocketException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
+    } on DioException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
     } catch (e, stack) {
       if (e is LanisException) rethrow;
       Error.throwWithStackTrace(
@@ -594,10 +599,10 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
       }
 
       return [];
-    } on SocketException {
-      throw NetworkException();
-    } on DioException {
-      throw NetworkException();
+    } on SocketException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
+    } on DioException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
     } catch (e, stack) {
       if (e is LanisException) rethrow;
       Error.throwWithStackTrace(
@@ -670,6 +675,7 @@ class OverviewFiltering {
 
   void toggleEntry(String id, {bool? hidden, bool? unread}) {
     final index = entries.indexWhere((entry) => entry.id == id);
+    if (index == -1) return;
     entries.replaceRange(index, index + 1, [
       entries[index].copyWith(
         hidden: hidden == null || hidden == false
