@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:meta/meta.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import '../exceptions.dart';
@@ -283,11 +284,19 @@ class LanisDatabase implements CacheStore {
     AccountType? accountType,
   }) async {
     final existing = _db.select(
-      'SELECT id FROM accounts WHERE school_id = ? AND username = ?',
+      'SELECT id, password_secret_key FROM accounts WHERE school_id = ? AND username = ?',
       [schoolId, username],
     );
     if (existing.isNotEmpty) {
-      throw AccountAlreadyExistsException();
+      final hasCommittedAccount = existing.any(
+        (row) => ((row['password_secret_key'] as String?) ?? '').isNotEmpty,
+      );
+      if (hasCommittedAccount) {
+        throw AccountAlreadyExistsException();
+      }
+      for (final row in existing) {
+        _db.execute('DELETE FROM accounts WHERE id = ?', [row['id']]);
+      }
     }
 
     final now = DateTime.now().toIso8601String();
@@ -302,12 +311,52 @@ class LanisDatabase implements CacheStore {
     );
     final id = _db.lastInsertRowId;
     final secretKey = _passwordKey(id);
-    await secretStore!.write(secretKey, password);
-    _db.execute('UPDATE accounts SET password_secret_key = ? WHERE id = ?', [
-      secretKey,
-      id,
-    ]);
+    try {
+      await secretStore!.write(secretKey, password);
+      _db.execute('UPDATE accounts SET password_secret_key = ? WHERE id = ?', [
+        secretKey,
+        id,
+      ]);
+      if (_db.updatedRows == 0) {
+        throw StateError('Account $id was removed during creation');
+      }
+    } catch (_) {
+      try {
+        _db.execute('DELETE FROM accounts WHERE id = ?', [id]);
+      } catch (_) {}
+      try {
+        await secretStore!.delete(secretKey);
+      } catch (_) {}
+      rethrow;
+    }
     return id;
+  }
+
+  /// Inserts a backing account row into an in-memory database for ephemeral
+  /// sessions so foreign-key-constrained settings, cache, and offline-data
+  /// writes succeed without persisting credentials.
+  @internal
+  int insertEphemeralAccount({
+    required int schoolId,
+    required String username,
+    AccountType? accountType,
+  }) {
+    if (!isInMemory) {
+      throw StateError(
+        'insertEphemeralAccount is only supported on in-memory databases',
+      );
+    }
+    final now = DateTime.now().toIso8601String();
+    _db.execute(
+      '''
+      INSERT INTO accounts (
+        school_id, school_name, username, account_type,
+        password_secret_key, last_login, creation_date
+      ) VALUES (?, '', ?, ?, '', NULL, ?)
+      ''',
+      [schoolId, username, accountType?.name, now],
+    );
+    return _db.lastInsertRowId;
   }
 
   Future<ClearTextAccount?> getAccount(int id) async {
