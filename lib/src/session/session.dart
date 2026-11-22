@@ -29,6 +29,8 @@ class LanisSession {
   final Dio dio = Dio();
   Timer? preventLogoutTimer;
   Future<void>? _authentication;
+  bool _disposed = false;
+  int _lifecycleGeneration = 0;
 
   Map<String, String> userData = {};
   AccountType? _accountType;
@@ -141,10 +143,15 @@ class LanisSession {
     bool withoutData = false,
     String? withLoginUrl,
   }) async {
+    final generation = _lifecycleGeneration;
+    if (_disposed) return;
+
     if (!(await connectionChecker.connected)) {
       throw NoConnectionException();
     }
 
+    preventLogoutTimer?.cancel();
+    preventLogoutTimer = null;
     jar.deleteAll();
     dio.options.validateStatus = (status) =>
         status != null && (status == 200 || status == 302 || status == 503);
@@ -165,11 +172,13 @@ class LanisSession {
 
     travelMenu = await getFastTravelMenu();
 
-    preventLogoutTimer?.cancel();
-    preventLogoutTimer = Timer.periodic(
-      const Duration(seconds: 10),
-      (_) => preventLogout(),
-    );
+    if (!_disposed && generation == _lifecycleGeneration) {
+      preventLogoutTimer?.cancel();
+      preventLogoutTimer = Timer.periodic(
+        const Duration(seconds: 10),
+        (_) => preventLogout(),
+      );
+    }
 
     if (!withoutData) {
       final response = await dio.get(
@@ -204,7 +213,9 @@ class LanisSession {
   }
 
   Future<void> deAuthenticate() async {
+    _lifecycleGeneration++;
     preventLogoutTimer?.cancel();
+    preventLogoutTimer = null;
     try {
       await dio.get('https://start.schulportal.hessen.de/index.php?logout=all');
     } catch (_) {}
@@ -370,7 +381,10 @@ class LanisSession {
   }
 
   Future<void> dispose() async {
+    _disposed = true;
+    _lifecycleGeneration++;
     preventLogoutTimer?.cancel();
+    preventLogoutTimer = null;
     _closeDioWithoutSharedAdapter(dio, config.httpAdapter);
   }
 

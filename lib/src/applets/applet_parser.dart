@@ -123,11 +123,14 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
 
   T presentCachedHome(T value) => value;
 
-  Future<void> fetchCachedData({CacheReadPolicy? policy}) async {
+  Future<void> fetchCachedData({
+    CacheReadPolicy? policy,
+    bool secondTry = false,
+  }) async {
     if (_controller.isClosed) return;
     var previous = latestResponse;
     var valid = previous?.expiresAt?.isAfter(DateTime.now()) ?? false;
-    if (!valid && policy != CacheReadPolicy.cacheOnly) {
+    if (!secondTry && !valid && policy != CacheReadPolicy.cacheOnly) {
       try {
         final cached = await cacheService.readCacheFor(
           accountId: cacheAccountId,
@@ -153,16 +156,18 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
       }
     }
     if (_controller.isClosed) return;
-    addResponse(
-      FetcherResponse<T>(
-        status: FetcherStatus.fetching,
-        error: null,
-        content: valid ? previous?.content : null,
-        contentStatus: previous?.contentStatus ?? ContentStatus.online,
-        fetchedAt: previous?.fetchedAt,
-        expiresAt: previous?.expiresAt,
-      ),
-    );
+    if (!secondTry) {
+      addResponse(
+        FetcherResponse<T>(
+          status: FetcherStatus.fetching,
+          error: null,
+          content: valid ? previous?.content : null,
+          contentStatus: previous?.contentStatus ?? ContentStatus.online,
+          fetchedAt: previous?.fetchedAt,
+          expiresAt: previous?.expiresAt,
+        ),
+      );
+    }
     try {
       final result = await loadCachedHome(policy: policy);
       addResponse(
@@ -195,6 +200,31 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
             error: ExceptionWithStackTrace(exception: error, stackTrace: stack),
           ),
         );
+        return;
+      }
+      if (!secondTry &&
+          policy != CacheReadPolicy.cacheOnly &&
+          error is! CacheUnavailableException &&
+          !CacheService.isTransportFailure(error)) {
+        try {
+          await ctx.session.authenticate();
+        } catch (authError, authStack) {
+          _reportUnexpectedError(authError, authStack);
+          addResponse(
+            FetcherResponse<T>(
+              status: FetcherStatus.error,
+              contentStatus: CacheService.isTransportFailure(authError)
+                  ? ContentStatus.offline
+                  : ContentStatus.online,
+              error: ExceptionWithStackTrace(
+                exception: authError,
+                stackTrace: authStack,
+              ),
+            ),
+          );
+          return;
+        }
+        await fetchCachedData(policy: policy, secondTry: true);
         return;
       }
       _reportUnexpectedError(error, stack);
@@ -251,7 +281,7 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
           forceRefresh ||
           _latestResponse.status == FetcherStatus.error ||
           (expiry != null && !DateTime.now().isBefore(expiry))) {
-        await fetchCachedData();
+        await fetchCachedData(secondTry: secondTry);
       }
       return;
     }
