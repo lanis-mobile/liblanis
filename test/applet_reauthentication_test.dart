@@ -360,5 +360,20 @@ void main() {
         expect(reported, isEmpty);
       },
     );
+
+    test(
+      'overlapping cached refreshes coalesce into a single re-authentication',
+      () async {
+        await Future.wait([
+          cachedParser.fetchData(forceRefresh: true),
+          cachedParser.fetchData(forceRefresh: true),
+        ]);
+        expect(session.authenticationCalls, 1);
+        expect(cachedParser.calls, 2);
+        expect(cachedParser.latestResponse!.status, FetcherStatus.done);
+        expect(cachedParser.latestResponse!.content, 'cached retried content');
+        expect(reported, isEmpty);
+      },
+    );
   });
 }

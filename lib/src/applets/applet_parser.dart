@@ -80,6 +80,8 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
   bool isEmpty = true;
   Timer? _refreshTimer;
   Timer? _cacheExpiryTimer;
+  Future<void>? _activeCachedFetch;
+  CacheReadPolicy? _activeCachedFetchPolicy;
 
   @override
   AppletResponseStream<T> get stream => _stream;
@@ -123,7 +125,23 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
 
   T presentCachedHome(T value) => value;
 
-  Future<void> fetchCachedData({
+  Future<void> fetchCachedData({CacheReadPolicy? policy}) {
+    final active = _activeCachedFetch;
+    if (active != null && _activeCachedFetchPolicy == policy) {
+      return active;
+    }
+    final flight = _fetchCachedData(policy: policy);
+    _activeCachedFetch = flight;
+    _activeCachedFetchPolicy = policy;
+    return flight.whenComplete(() {
+      if (identical(_activeCachedFetch, flight)) {
+        _activeCachedFetch = null;
+        _activeCachedFetchPolicy = null;
+      }
+    });
+  }
+
+  Future<void> _fetchCachedData({
     CacheReadPolicy? policy,
     bool secondTry = false,
   }) async {
@@ -224,7 +242,7 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
           );
           return;
         }
-        await fetchCachedData(policy: policy, secondTry: true);
+        await _fetchCachedData(policy: policy, secondTry: true);
         return;
       }
       _reportUnexpectedError(error, stack);
@@ -310,7 +328,7 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
           forceRefresh ||
           _latestResponse.status == FetcherStatus.error ||
           (expiry != null && !DateTime.now().isBefore(expiry))) {
-        await fetchCachedData(secondTry: secondTry);
+        await fetchCachedData();
       }
       return;
     }
