@@ -202,31 +202,108 @@ void main() {
         expect(account?.password, 'secret');
       },
     );
+
+    test(
+      'addAccount removes partially written secret when cleanup succeeds',
+      () async {
+        final store = _FlakySecretStore(failWrites: true, failDeletes: false);
+        final flakyDb = LanisDatabase.open(secretStore: store);
+        addTearDown(flakyDb.dispose);
+
+        await expectLater(
+          flakyDb.addAccount(
+            schoolId: 101,
+            schoolName: 'School',
+            username: 'bob',
+            password: 'secret',
+          ),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(await flakyDb.listAccounts(), isEmpty);
+        expect(store.values, isEmpty);
+      },
+    );
+
+    test(
+      'addAccount replaces pre-existing incomplete row with empty secret key',
+      () async {
+        final store = MemorySecretStore();
+        final recoveryDb = LanisDatabase.open(secretStore: store);
+        addTearDown(recoveryDb.dispose);
+
+        // Simulate a leftover orphan row (e.g. from an interrupted write/lock).
+        // ignore: invalid_use_of_internal_member
+        recoveryDb.insertEphemeralAccount(schoolId: 102, username: 'carol');
+
+        final id = await recoveryDb.addAccount(
+          schoolId: 102,
+          schoolName: 'Recovered School',
+          username: 'carol',
+          password: 'pw',
+        );
+        final account = await recoveryDb.getAccount(id);
+        expect(account?.schoolName, 'Recovered School');
+        expect(account?.password, 'pw');
+        expect(await recoveryDb.listAccounts(), hasLength(1));
+      },
+    );
+
+    test(
+      'addAccount fails and cleans up secret if row is deleted during SecretStore.write',
+      () async {
+        final store = _FlakySecretStore();
+        final raceDb = LanisDatabase.open(secretStore: store);
+        addTearDown(raceDb.dispose);
+
+        store.onWrite = () async {
+          final accounts = await raceDb.listAccounts();
+          for (final a in accounts) {
+            await raceDb.deleteAccount(a.localId);
+          }
+        };
+
+        await expectLater(
+          raceDb.addAccount(
+            schoolId: 103,
+            schoolName: 'Race School',
+            username: 'dave',
+            password: 'pw',
+          ),
+          throwsA(isA<StateError>()),
+        );
+        expect(await raceDb.listAccounts(), isEmpty);
+        expect(store.values, isEmpty);
+      },
+    );
   });
 }
 
 class _FlakySecretStore implements SecretStore {
-  final Map<String, String> _values = {};
+  final Map<String, String> values = {};
   bool failWrites;
   bool failDeletes;
+  Future<void> Function()? onWrite;
 
   _FlakySecretStore({this.failWrites = false, this.failDeletes = false});
 
   @override
-  Future<String?> read(String key) async => _values[key];
+  Future<String?> read(String key) async => values[key];
 
   @override
   Future<void> write(String key, String value) async {
+    values[key] = value;
+    if (onWrite != null) {
+      await onWrite!();
+    }
     if (failWrites) {
-      _values[key] = value;
       throw StateError('keychain locked');
     }
-    _values[key] = value;
   }
 
   @override
   Future<void> delete(String key) async {
     if (failDeletes) throw StateError('keychain delete failed');
-    _values.remove(key);
+    values.remove(key);
   }
 }

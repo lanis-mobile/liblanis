@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:meta/meta.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import '../exceptions.dart';
@@ -283,11 +284,19 @@ class LanisDatabase implements CacheStore {
     AccountType? accountType,
   }) async {
     final existing = _db.select(
-      'SELECT id FROM accounts WHERE school_id = ? AND username = ?',
+      'SELECT id, password_secret_key FROM accounts WHERE school_id = ? AND username = ?',
       [schoolId, username],
     );
     if (existing.isNotEmpty) {
-      throw AccountAlreadyExistsException();
+      final hasCommittedAccount = existing.any(
+        (row) => ((row['password_secret_key'] as String?) ?? '').isNotEmpty,
+      );
+      if (hasCommittedAccount) {
+        throw AccountAlreadyExistsException();
+      }
+      for (final row in existing) {
+        _db.execute('DELETE FROM accounts WHERE id = ?', [row['id']]);
+      }
     }
 
     final now = DateTime.now().toIso8601String();
@@ -308,6 +317,9 @@ class LanisDatabase implements CacheStore {
         secretKey,
         id,
       ]);
+      if (_db.updatedRows == 0) {
+        throw StateError('Account $id was removed during creation');
+      }
     } catch (_) {
       try {
         _db.execute('DELETE FROM accounts WHERE id = ?', [id]);
@@ -323,6 +335,7 @@ class LanisDatabase implements CacheStore {
   /// Inserts a backing account row into an in-memory database for ephemeral
   /// sessions so foreign-key-constrained settings, cache, and offline-data
   /// writes succeed without persisting credentials.
+  @internal
   int insertEphemeralAccount({
     required int schoolId,
     required String username,
