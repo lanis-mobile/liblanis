@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -20,6 +21,8 @@ class _Adapter implements HttpClientAdapter {
   int homeRequests = 0;
   int userDataRequests = 0;
   bool failFirst = false;
+  String? loginDenial;
+  String? appsRedirect;
 
   @override
   Future<ResponseBody> fetch(
@@ -28,6 +31,24 @@ class _Adapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     final path = options.uri.path;
+    if (path == '/test-login' && loginDenial != null) {
+      return ResponseBody.fromString(
+        jsonEncode({'back': false, 'text': loginDenial}),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['text/plain'],
+        },
+      );
+    }
+    if (path == '/startseite.php' && appsRedirect != null) {
+      return ResponseBody.fromString(
+        '',
+        302,
+        headers: {
+          HttpHeaders.locationHeader: [appsRedirect!],
+        },
+      );
+    }
     if (path == '/') homeRequests++;
     if (path == '/benutzerverwaltung.php') userDataRequests++;
     return ResponseBody.fromString(
@@ -130,6 +151,31 @@ void main() {
     withoutData: withoutData,
     withLoginUrl: 'https://start.schulportal.hessen.de/test-login',
   );
+
+  test('a parent without linked learners gets a dedicated error', () async {
+    adapter.loginDenial =
+        'Für diesen Account sind keine Lernenden hinterlegt, weshalb ein Login '
+        'nicht möglich ist.';
+    await expectLater(
+      authenticate(),
+      throwsA(isA<ParentAccountWithoutLearnersException>()),
+    );
+  });
+
+  test('a school-disabled account gets a dedicated error', () async {
+    adapter.loginDenial =
+        'Der Login für diesen Account ist durch den schulischen Admin gesperrt '
+        'worden.';
+    await expectLater(authenticate(), throwsA(isA<AccountDisabledException>()));
+  });
+
+  test('a password change redirect gets a dedicated error', () async {
+    adapter.appsRedirect = 'benutzerverwaltung.php?a=userChangePassword';
+    await expectLater(
+      authenticate(),
+      throwsA(isA<PasswordChangeRequiredException>()),
+    );
+  });
 
   test(
     'overlapping authentication cannot replace a pending handshake key',

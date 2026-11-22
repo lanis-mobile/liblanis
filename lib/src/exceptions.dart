@@ -29,6 +29,23 @@ class WrongCredentialsException extends LanisException {
   String get defaultMessage => 'Wrong credentials';
 }
 
+class ParentAccountWithoutLearnersException extends LanisException {
+  @override
+  String get defaultMessage => 'No learners are linked to this parent account.';
+}
+
+class AccountDisabledException extends LanisException {
+  @override
+  String get defaultMessage =>
+      'This account has been disabled by the issuing school.';
+}
+
+class PasswordChangeRequiredException extends LanisException {
+  @override
+  String get defaultMessage =>
+      'Change your password in Schulportal Hessen before logging in.';
+}
+
 class LanisDownException extends LanisException {
   LanisDownException([super.cause]);
 
