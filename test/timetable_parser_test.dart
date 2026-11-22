@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:html/parser.dart' show parse;
 import 'package:liblanis/liblanis.dart';
 import 'package:path/path.dart' as p;
@@ -262,4 +264,150 @@ void main() {
       }
     });
   });
+
+  group('TimetableStudentParser.getTimetableDocument redirects', () {
+    Future<TimetableStudentParser> createParser(
+      _TimetableTestAdapter adapter,
+    ) async {
+      final db = LanisDatabase.open();
+      final id = await db.addAccount(
+        schoolId: 5182,
+        schoolName: 'Test School',
+        username: 'student',
+        password: 'pw',
+        accountType: AccountType.student,
+      );
+      final account = (await db.getAccount(id))!;
+      const config = LanisConfig();
+      final checker = _TimetableTestChecker(adapter);
+      final session = _TimetableTestSession(
+        account: account,
+        config: config,
+        connectionChecker: checker,
+        adapter: adapter,
+      );
+      final ctx = AppletContext(
+        account: account,
+        session: session,
+        database: db,
+        accountSettings: TypedSettings.account(db, id),
+      );
+      final parser = TimetableStudentParser(ctx, isConnected: () async => true);
+      addTearDown(() async {
+        parser.dispose();
+        await session.dispose();
+        checker.dispose();
+        db.dispose();
+      });
+      return parser;
+    }
+
+    test('resolves leading-slash and relative redirects cleanly', () async {
+      for (final location in [
+        '/stundenplan.php?a=klasse&p=1',
+        'stundenplan.php?a=klasse&p=1',
+      ]) {
+        final adapter = _TimetableTestAdapter((options) async {
+          if (options.uri.queryParameters.isEmpty) {
+            return ResponseBody.fromString(
+              '',
+              302,
+              headers: {
+                'location': [location],
+              },
+            );
+          }
+          return ResponseBody.fromString(
+            '<html><body><div id="all"><table><tbody></tbody></table></div></body></html>',
+            200,
+          );
+        });
+        final parser = await createParser(adapter);
+
+        final doc = await parser.getTimetableDocument();
+        expect(doc, isNotNull);
+        expect(doc!.getElementById('all'), isNotNull);
+        expect(adapter.requests, hasLength(2));
+        expect(
+          adapter.requests.last.uri.toString(),
+          'https://start.schulportal.hessen.de/stundenplan.php?a=klasse&p=1',
+          reason: 'Redirect "$location" should resolve without double slashes',
+        );
+      }
+    });
+
+    test('rejects untrusted external or non-HTTPS redirects', () async {
+      for (final badLocation in [
+        'https://evil.example/stundenplan.php',
+        'http://start.schulportal.hessen.de/stundenplan.php',
+      ]) {
+        final adapter = _TimetableTestAdapter((options) async {
+          return ResponseBody.fromString(
+            '',
+            302,
+            headers: {
+              'location': [badLocation],
+            },
+          );
+        });
+        final parser = await createParser(adapter);
+
+        await expectLater(
+          () => parser.getTimetableDocument(),
+          throwsA(isA<ConfigurationException>()),
+          reason: 'Expected ConfigurationException for "$badLocation"',
+        );
+        expect(adapter.requests, hasLength(1));
+      }
+    });
+  });
+}
+
+class _TimetableTestAdapter implements HttpClientAdapter {
+  final requests = <RequestOptions>[];
+  final Future<ResponseBody> Function(RequestOptions options) handler;
+
+  _TimetableTestAdapter(this.handler);
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    return handler(options);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _TimetableTestChecker extends ConnectionChecker {
+  _TimetableTestChecker(_TimetableTestAdapter adapter)
+    : super(httpAdapter: adapter);
+
+  @override
+  Future<bool> testConnection() async => true;
+}
+
+class _TimetableTestSession extends LanisSession {
+  _TimetableTestSession({
+    required super.account,
+    required super.config,
+    required super.connectionChecker,
+    required _TimetableTestAdapter adapter,
+  }) {
+    dio.httpClientAdapter = adapter;
+    dio.options.followRedirects = false;
+    dio.options.validateStatus = (status) => status == 200 || status == 302;
+  }
+
+  @override
+  Future<void> authenticate({
+    bool withoutData = false,
+    String? withLoginUrl,
+  }) async {
+    throw StateError('Unit tests must not authenticate');
+  }
 }

@@ -17,6 +17,10 @@ part 'parser.g.dart';
 
 class TimetableStudentParser extends AppletParser<TimeTable>
     with _$TimetableStudentParserCache {
+  static final Uri _base = Uri.parse(
+    'https://start.schulportal.hessen.de/stundenplan.php',
+  );
+
   TimetableStudentParser(
     AppletContext ctx, {
     Future<bool> Function()? isConnected,
@@ -99,13 +103,29 @@ class TimetableStudentParser extends AppletParser<TimeTable>
       }
     }
 
-    if (response1.headers['location'] == null) {
+    final location = response1.headers.value('location')?.trim();
+    if (location == null || location.isEmpty) {
       return null;
     }
 
-    final response2 = await ctx.session.dio.get(
-      'https://start.schulportal.hessen.de/${response1.headers['location']?[0]}',
-    );
+    final baseUri = response1.realUri.hasScheme ? response1.realUri : _base;
+    final Uri redirectUri;
+    try {
+      redirectUri = baseUri.resolve(location);
+    } on FormatException {
+      throw ConfigurationException(
+        'Timetable redirect location is not a valid URI',
+      );
+    }
+    if (redirectUri.scheme != _base.scheme ||
+        redirectUri.host != _base.host ||
+        redirectUri.port != _base.port) {
+      throw ConfigurationException(
+        'Timetable redirect must stay on ${_base.origin}',
+      );
+    }
+
+    final response2 = await ctx.session.dio.getUri(redirectUri);
     return parse(response2.data);
   }
 
