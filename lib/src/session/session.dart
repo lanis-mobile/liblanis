@@ -144,7 +144,9 @@ class LanisSession {
     String? withLoginUrl,
   }) async {
     final generation = _lifecycleGeneration;
-    if (_disposed) return;
+    if (_disposed) {
+      throw StateError('LanisSession has been disposed');
+    }
 
     if (!(await connectionChecker.connected)) {
       throw NoConnectionException();

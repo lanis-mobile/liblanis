@@ -55,6 +55,7 @@ class _CachedParser extends AppletParser<String> {
   int calls = 0;
   bool alwaysFail = false;
   Object? readFailure;
+  Object? presentFailure;
 
   _CachedParser(AppletContext context)
     : super(
@@ -80,6 +81,12 @@ class _CachedParser extends AppletParser<String> {
 
   @override
   CacheRequest<String> get homeCacheRequest => _homeRequest;
+
+  @override
+  String presentCachedHome(String value) {
+    if (presentFailure != null) throw presentFailure!;
+    return value;
+  }
 
   @override
   Future<String> getHome() async {
@@ -291,5 +298,67 @@ void main() {
       );
       expect(reported, hasLength(1));
     });
+
+    test(
+      'does not re-authenticate on ConfigurationException or NotSupportedException',
+      () async {
+        for (final error in [
+          ConfigurationException('bad redirect'),
+          NotSupportedException('unsupported'),
+        ]) {
+          cachedParser.readFailure = error;
+          await cachedParser.fetchData(forceRefresh: true);
+          expect(session.authenticationCalls, 0);
+          expect(cachedParser.latestResponse!.status, FetcherStatus.error);
+          expect(cachedParser.latestResponse!.error!.exception, same(error));
+        }
+      },
+    );
+
+    test(
+      'does not re-authenticate when presentCachedHome throws after load succeeds',
+      () async {
+        cachedParser.calls = 1; // make getHome succeed
+        cachedParser.presentFailure = StateError('presentation bug');
+        await cachedParser.fetchData();
+        expect(session.authenticationCalls, 0);
+        expect(cachedParser.calls, 2);
+        expect(cachedParser.latestResponse!.status, FetcherStatus.error);
+        expect(
+          cachedParser.latestResponse!.error!.exception,
+          isA<StateError>(),
+        );
+        expect(reported, hasLength(1));
+      },
+    );
+
+    test(
+      'preserves valid cached content if re-authentication fails with a transport error',
+      () async {
+        // Seed valid cache first.
+        cachedParser.calls = 1;
+        await cachedParser.fetchData();
+        expect(cachedParser.latestResponse!.status, FetcherStatus.done);
+        expect(cachedParser.latestResponse!.content, 'cached retried content');
+
+        // Next refresh hits an expired session, then loses connection during re-auth.
+        cachedParser.calls = 0;
+        session.failure = NoConnectionException();
+        await cachedParser.fetchData(forceRefresh: true);
+
+        expect(session.authenticationCalls, 1);
+        expect(cachedParser.latestResponse!.status, FetcherStatus.done);
+        expect(cachedParser.latestResponse!.content, 'cached retried content');
+        expect(
+          cachedParser.latestResponse!.contentStatus,
+          ContentStatus.offline,
+        );
+        expect(
+          cachedParser.latestResponse!.error!.exception,
+          same(session.failure),
+        );
+        expect(reported, isEmpty);
+      },
+    );
   });
 }

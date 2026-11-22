@@ -168,47 +168,47 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
         ),
       );
     }
-    try {
-      final result = await loadCachedHome(policy: policy);
+    bool hasValidPreviousCache() =>
+        valid &&
+        previous?.content != null &&
+        (previous?.expiresAt?.isAfter(DateTime.now()) ?? false);
+
+    void emitCachedFallback(Object error, StackTrace stack) {
       addResponse(
         FetcherResponse<T>(
           status: FetcherStatus.done,
-          error: null,
-          content: presentCachedHome(result.data),
-          contentStatus: result.cacheStatus == CacheStatus.cache
-              ? ContentStatus.offline
-              : ContentStatus.online,
-          fetchedAt: result.fetchedAt,
-          responseAt: result.responseAt,
-          expiresAt: result.expiresAt,
+          content: previous!.content,
+          contentStatus: ContentStatus.offline,
+          fetchedAt: previous.fetchedAt,
+          responseAt: DateTime.now(),
+          expiresAt: previous.expiresAt,
+          error: ExceptionWithStackTrace(exception: error, stackTrace: stack),
         ),
       );
-      isEmpty = false;
+    }
+
+    final MaybeCacheResult<T> result;
+    try {
+      result = await loadCachedHome(policy: policy);
     } catch (error, stack) {
-      if (CacheService.isTransportFailure(error) &&
-          valid &&
-          previous?.content != null &&
-          (previous?.expiresAt?.isAfter(DateTime.now()) ?? false)) {
-        addResponse(
-          FetcherResponse<T>(
-            status: FetcherStatus.done,
-            content: previous!.content,
-            contentStatus: ContentStatus.offline,
-            fetchedAt: previous.fetchedAt,
-            responseAt: DateTime.now(),
-            expiresAt: previous.expiresAt,
-            error: ExceptionWithStackTrace(exception: error, stackTrace: stack),
-          ),
-        );
+      if (CacheService.isTransportFailure(error) && hasValidPreviousCache()) {
+        emitCachedFallback(error, stack);
         return;
       }
       if (!secondTry &&
           policy != CacheReadPolicy.cacheOnly &&
           error is! CacheUnavailableException &&
+          error is! ConfigurationException &&
+          error is! NotSupportedException &&
           !CacheService.isTransportFailure(error)) {
         try {
           await ctx.session.authenticate();
         } catch (authError, authStack) {
+          if (CacheService.isTransportFailure(authError) &&
+              hasValidPreviousCache()) {
+            emitCachedFallback(authError, authStack);
+            return;
+          }
           _reportUnexpectedError(authError, authStack);
           addResponse(
             FetcherResponse<T>(
@@ -234,6 +234,35 @@ class AppletParser<T> implements CacheHost, AppletDataSource<T> {
           contentStatus:
               error is CacheUnavailableException ||
                   CacheService.isTransportFailure(error)
+              ? ContentStatus.offline
+              : ContentStatus.online,
+          error: ExceptionWithStackTrace(exception: error, stackTrace: stack),
+        ),
+      );
+      return;
+    }
+
+    try {
+      addResponse(
+        FetcherResponse<T>(
+          status: FetcherStatus.done,
+          error: null,
+          content: presentCachedHome(result.data),
+          contentStatus: result.cacheStatus == CacheStatus.cache
+              ? ContentStatus.offline
+              : ContentStatus.online,
+          fetchedAt: result.fetchedAt,
+          responseAt: result.responseAt,
+          expiresAt: result.expiresAt,
+        ),
+      );
+      isEmpty = false;
+    } catch (error, stack) {
+      _reportUnexpectedError(error, stack);
+      addResponse(
+        FetcherResponse<T>(
+          status: FetcherStatus.error,
+          contentStatus: result.cacheStatus == CacheStatus.cache
               ? ContentStatus.offline
               : ContentStatus.online,
           error: ExceptionWithStackTrace(exception: error, stackTrace: stack),

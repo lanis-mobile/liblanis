@@ -291,4 +291,16 @@ void main() {
       expect(session.preventLogoutTimer, isNull);
     },
   );
+
+  test('authenticate on an already-disposed session throws StateError', () async {
+    await session.dispose();
+    await expectLater(
+      session.authenticate(
+        withoutData: true,
+        withLoginUrl: 'https://start.schulportal.hessen.de/test-login',
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(session.preventLogoutTimer, isNull);
+  });
 }
