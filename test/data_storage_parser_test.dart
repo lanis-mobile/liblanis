@@ -107,4 +107,34 @@ void main() {
       throwsA(isA<UnauthorizedException>()),
     );
   });
+
+  test('searchFiles rejects unexpected JSON object payloads', () async {
+    adapter.statusCode = 200;
+    adapter.body = jsonEncode({'error': 'unexpected'});
+    await expectLater(
+      parser.searchFiles('test'),
+      throwsA(isA<UnknownException>()),
+    );
+  });
+
+  test('searchFiles returns empty list without requesting for queries under 2 chars', () async {
+    expect(await parser.searchFiles(''), isEmpty);
+    expect(await parser.searchFiles('a'), isEmpty);
+    expect(adapter.lastOptions, isNull);
+  });
+
+  test('searchFiles returns empty list for server short-query response', () async {
+    adapter.statusCode = 200;
+    adapter.body = jsonEncode({
+      'id': 0,
+      'text': 'Bitte mindestens zwei Zeichen eingeben!',
+    });
+    expect(await parser.searchFiles('ab'), isEmpty);
+  });
+
+  test('searchFiles returns empty list for empty array response', () async {
+    adapter.statusCode = 200;
+    adapter.body = '[[]]';
+    expect(await parser.searchFiles('test'), isEmpty);
+  });
 }

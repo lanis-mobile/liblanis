@@ -29,8 +29,6 @@ class LanisSession {
   final Dio dio = Dio();
   Timer? preventLogoutTimer;
   Future<void>? _authentication;
-  bool _authenticationWithoutData = false;
-  String? _authenticationWithLoginUrl;
   bool _disposed = false;
   int _lifecycleGeneration = 0;
   int _authGeneration = 0;
@@ -119,19 +117,34 @@ class LanisSession {
   /// generation share a single in-flight re-authentication instead of wiping
   /// the fresh cookie jar and encryption key back-to-back.
   Future<void> reauthenticateIfStale(int observedGeneration) async {
-    if (_authGeneration != observedGeneration) return;
-    final inFlight = _authentication;
-    if (inFlight != null &&
-        _authenticationWithLoginUrl == null &&
-        !_authenticationWithoutData) {
-      await inFlight;
+    while (_authGeneration == observedGeneration) {
+      final inFlight = _authentication;
+      if (inFlight != null) {
+        await inFlight;
+        if (_authGeneration != observedGeneration) return;
+        continue;
+      }
+      await authenticate();
       return;
     }
-    if (inFlight != null && _authenticationWithLoginUrl == null) {
-      await inFlight;
-      if (_authGeneration != observedGeneration) return;
+  }
+
+  Future<void> _runAuthenticate({
+    required bool withoutData,
+    String? withLoginUrl,
+  }) async {
+    try {
+      await _authenticate(
+        withoutData: withoutData,
+        withLoginUrl: withLoginUrl,
+      );
+    } on LanisException {
+      rethrow;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 503) throw LanisDownException();
+      if (CacheService.isTransportFailure(e)) throw NoConnectionException();
+      throw UnknownException(e.message ?? e.toString());
     }
-    await authenticate();
   }
 
   Future<void> authenticate({
@@ -147,25 +160,17 @@ class LanisSession {
         // A previous caller's failure must not prevent this caller from retrying.
       }
     }
-    final authentication = _authenticate(
+    final authentication = _runAuthenticate(
       withoutData: withoutData,
       withLoginUrl: withLoginUrl,
     );
     _authentication = authentication;
-    _authenticationWithoutData = withoutData;
-    _authenticationWithLoginUrl = withLoginUrl;
     try {
       await authentication;
-    } on LanisException {
-      rethrow;
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 503) throw LanisDownException();
-      if (CacheService.isTransportFailure(e)) throw NoConnectionException();
-      throw UnknownException(e.message ?? e.toString());
     } finally {
-      _authentication = null;
-      _authenticationWithoutData = false;
-      _authenticationWithLoginUrl = null;
+      if (identical(_authentication, authentication)) {
+        _authentication = null;
+      }
     }
   }
 
@@ -382,11 +387,16 @@ class LanisSession {
       }
       throw UnauthorizedException('Fast-travel menu request redirected');
     }
-    final body = response.data?.toString() ?? '';
-    if (body.trim().isEmpty) {
-      throw UnknownException('Empty fast-travel menu response');
+    final dynamic decoded;
+    if (response.data is Map) {
+      decoded = response.data;
+    } else {
+      final body = response.data?.toString() ?? '';
+      if (body.trim().isEmpty) {
+        throw UnknownException('Empty fast-travel menu response');
+      }
+      decoded = jsonDecode(body);
     }
-    final decoded = jsonDecode(body);
     if (decoded is! Map || decoded['entrys'] is! List) {
       throw UnknownException('Unexpected fast-travel menu response');
     }

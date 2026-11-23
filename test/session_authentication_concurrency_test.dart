@@ -24,6 +24,9 @@ class _Adapter implements HttpClientAdapter {
   bool failFirst = false;
   String? loginDenial;
   String? appsRedirect;
+  String appsContentType = 'text/plain';
+  Completer<void>? homeStarted;
+  Completer<void>? releaseHome;
 
   @override
   Future<ResponseBody> fetch(
@@ -50,7 +53,15 @@ class _Adapter implements HttpClientAdapter {
         },
       );
     }
-    if (path == '/') homeRequests++;
+    if (path == '/') {
+      homeRequests++;
+      if (homeStarted != null && !homeStarted!.isCompleted) {
+        homeStarted!.complete();
+      }
+      if (releaseHome != null) {
+        await releaseHome!.future;
+      }
+    }
     if (path == '/benutzerverwaltung.php') userDataRequests++;
     return ResponseBody.fromString(
       path == '/startseite.php'
@@ -60,7 +71,9 @@ class _Adapter implements HttpClientAdapter {
           : '{}',
       failFirst && path == '/' && homeRequests == 1 ? 503 : 200,
       headers: {
-        Headers.contentTypeHeader: ['text/plain'],
+        Headers.contentTypeHeader: [
+          path == '/startseite.php' ? appsContentType : 'text/plain',
+        ],
       },
     );
   }
@@ -261,6 +274,59 @@ void main() {
         session.getFastTravelMenu(),
         throwsA(isA<UnauthorizedException>()),
       );
+    },
+  );
+
+  test(
+    'reauthenticateIfStale joins an in-flight withLoginUrl login without extra handshakes',
+    () async {
+      final observed = session.authGeneration;
+      final fullLogin = authenticate(withoutData: false);
+      await cryptor.firstHandshake.future;
+
+      final retry1 = session.reauthenticateIfStale(observed);
+      final retry2 = session.reauthenticateIfStale(observed);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      cryptor.releaseFirst.complete();
+
+      await Future.wait([fullLogin, retry1, retry2]);
+      expect(cryptor.handshakes, 1);
+      expect(adapter.homeRequests, 1);
+      expect(session.authGeneration, observed + 1);
+    },
+  );
+
+  test(
+    'reauthenticateIfStale receives normalized LanisDownException when joined login fails with 503',
+    () async {
+      adapter.failFirst = true;
+      adapter.homeStarted = Completer<void>();
+      adapter.releaseHome = Completer<void>();
+      cryptor.pauseFirst = false;
+
+      final observed = session.authGeneration;
+      final starter = expectLater(
+        authenticate(),
+        throwsA(isA<LanisDownException>()),
+      );
+      await adapter.homeStarted!.future;
+      final joined = expectLater(
+        session.reauthenticateIfStale(observed),
+        throwsA(isA<LanisDownException>()),
+      );
+      adapter.releaseHome!.complete();
+
+      await Future.wait([starter, joined]);
+      expect(adapter.homeRequests, 1);
+    },
+  );
+
+  test(
+    'getFastTravelMenu accepts pre-decoded Map from application/json responses',
+    () async {
+      adapter.appsContentType = 'application/json';
+      final menu = await session.getFastTravelMenu();
+      expect(menu, isEmpty);
     },
   );
 

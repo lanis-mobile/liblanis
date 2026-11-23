@@ -26,6 +26,9 @@ class DataStorageParser
   }
 
   Future<dynamic> searchFiles(String query) async {
+    if (query.trim().length < 2) {
+      return const <dynamic>[];
+    }
     final Response<dynamic> response;
     try {
       response = await ctx.session.dio.get(
@@ -39,17 +42,26 @@ class DataStorageParser
       throw UnauthorizedException('Data storage search redirected');
     }
     final dynamic data;
-    if (response.data is List) {
+    if (response.data is List || response.data is Map) {
       data = response.data;
     } else {
       final body = response.data?.toString() ?? '';
-      if (body.trim().isEmpty) return const <dynamic>[];
+      if (body.trim().isEmpty) {
+        throw UnknownException('Empty data storage search response');
+      }
       data = jsonDecode(body);
     }
-    if (data is List && data.isNotEmpty) {
-      return data[0];
+    if (data is Map && data['id'] == 0) {
+      return const <dynamic>[];
     }
-    return const <dynamic>[];
+    if (data is! List) {
+      throw UnknownException('Unexpected data storage search response');
+    }
+    if (data.isEmpty) return const <dynamic>[];
+    if (data[0] is! List) {
+      throw UnknownException('Unexpected data storage search results');
+    }
+    return data[0];
   }
 
   Future<(List<FileNode>, List<FolderNode>)> getNode(int nodeID) async {
