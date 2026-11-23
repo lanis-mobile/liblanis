@@ -31,6 +31,10 @@ class LanisSession {
   Future<void>? _authentication;
   bool _disposed = false;
   int _lifecycleGeneration = 0;
+  int _authGeneration = 0;
+
+  /// Incremented after each successful authentication.
+  int get authGeneration => _authGeneration;
 
   Map<String, String> userData = {};
   AccountType? _accountType;
@@ -108,6 +112,42 @@ class LanisSession {
         status != null && (status == 200 || status == 302 || status == 503);
   }
 
+  /// Re-authenticates once if the session has not already been refreshed since
+  /// [observedGeneration]. Concurrent callers observing the same stale
+  /// generation share a single in-flight re-authentication instead of wiping
+  /// the fresh cookie jar and encryption key back-to-back.
+  Future<void> reauthenticateIfStale(int observedGeneration) async {
+    while (true) {
+      final inFlight = _authentication;
+      if (inFlight != null) {
+        await inFlight;
+        if (_authGeneration != observedGeneration) return;
+        continue;
+      }
+      if (_authGeneration != observedGeneration) return;
+      await authenticate();
+      return;
+    }
+  }
+
+  Future<void> _runAuthenticate({
+    required bool withoutData,
+    String? withLoginUrl,
+  }) async {
+    try {
+      await _authenticate(
+        withoutData: withoutData,
+        withLoginUrl: withLoginUrl,
+      );
+    } on LanisException {
+      rethrow;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 503) throw LanisDownException();
+      if (CacheService.isTransportFailure(e)) throw NoConnectionException();
+      throw UnknownException(e.message ?? e.toString());
+    }
+  }
+
   Future<void> authenticate({
     bool withoutData = false,
     String? withLoginUrl,
@@ -121,21 +161,17 @@ class LanisSession {
         // A previous caller's failure must not prevent this caller from retrying.
       }
     }
-    final authentication = _authenticate(
+    final authentication = _runAuthenticate(
       withoutData: withoutData,
       withLoginUrl: withLoginUrl,
     );
     _authentication = authentication;
     try {
       await authentication;
-    } on LanisException {
-      rethrow;
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 503) throw LanisDownException();
-      if (CacheService.isTransportFailure(e)) throw NoConnectionException();
-      throw UnknownException(e.message ?? e.toString());
     } finally {
-      _authentication = null;
+      if (identical(_authentication, authentication)) {
+        _authentication = null;
+      }
     }
   }
 
@@ -186,11 +222,25 @@ class LanisSession {
       final response = await dio.get(
         'https://start.schulportal.hessen.de/benutzerverwaltung.php?a=userData',
       );
-      userData = parseUserData(parse(response.data));
-      _accountType = parseAccountType(parse(response.data));
+      if (response.statusCode == 302) {
+        final location = response.headers.value(HttpHeaders.locationHeader);
+        if (location != null) {
+          final target = response.requestOptions.uri.resolve(location);
+          if (target.origin == response.requestOptions.uri.origin &&
+              target.path == '/benutzerverwaltung.php' &&
+              target.queryParameters['a'] == 'userChangePassword') {
+            throw PasswordChangeRequiredException();
+          }
+        }
+        throw UnauthorizedException('User data request redirected');
+      }
+      final document = parse(response.data);
+      userData = parseUserData(document);
+      _accountType = parseAccountType(document);
     }
 
     await cryptor.initialize(dio);
+    _authGeneration++;
   }
 
   void _checkLoginResponse(Response<dynamic> response) {
@@ -327,15 +377,31 @@ class LanisSession {
       'https://start.schulportal.hessen.de/startseite.php?a=ajax&f=apps',
     );
     final location = response.headers.value(HttpHeaders.locationHeader);
-    if (response.statusCode == 302 && location != null) {
-      final target = response.requestOptions.uri.resolve(location);
-      if (target.origin == response.requestOptions.uri.origin &&
-          target.path == '/benutzerverwaltung.php' &&
-          target.queryParameters['a'] == 'userChangePassword') {
-        throw PasswordChangeRequiredException();
+    if (response.statusCode == 302) {
+      if (location != null) {
+        final target = response.requestOptions.uri.resolve(location);
+        if (target.origin == response.requestOptions.uri.origin &&
+            target.path == '/benutzerverwaltung.php' &&
+            target.queryParameters['a'] == 'userChangePassword') {
+          throw PasswordChangeRequiredException();
+        }
       }
+      throw UnauthorizedException('Fast-travel menu request redirected');
     }
-    return jsonDecode(response.data.toString())['entrys'] as List<dynamic>;
+    final dynamic decoded;
+    if (response.data is Map) {
+      decoded = response.data;
+    } else {
+      final body = response.data?.toString() ?? '';
+      if (body.trim().isEmpty) {
+        throw UnknownException('Empty fast-travel menu response');
+      }
+      decoded = jsonDecode(body);
+    }
+    if (decoded is! Map || decoded['entrys'] is! List) {
+      throw UnknownException('Unexpected fast-travel menu response');
+    }
+    return decoded['entrys'] as List<dynamic>;
   }
 
   Map<String, String> parseUserData(Document document) {
@@ -347,18 +413,26 @@ class LanisSession {
 
     final result = <String, String>{};
     for (final row in userDataTableBody.querySelectorAll('tr')) {
+      if (row.children.length < 2) continue;
       var key = row.children[0].text.trim();
       final value = row.children[1].text.trim();
-      key = key.substring(0, key.length - 1).toLowerCase();
-      result[key] = value;
+      if (key.isEmpty) continue;
+      if (key.endsWith(':')) {
+        key = key.substring(0, key.length - 1);
+      }
+      result[key.toLowerCase()] = value;
     }
     return result;
   }
 
   AccountType parseAccountType(Document document) {
-    final iconClassList = document
-        .querySelector('.nav.navbar-nav.navbar-right>li>a>i')!
-        .classes;
+    final iconElement = document.querySelector(
+      '.nav.navbar-nav.navbar-right>li>a>i',
+    );
+    if (iconElement == null) {
+      throw UnknownException('Missing account type icon in user data page');
+    }
+    final iconClassList = iconElement.classes;
     if (iconClassList.contains('fa-child')) {
       return AccountType.student;
     } else if (iconClassList.contains('fa-user-circle')) {

@@ -83,6 +83,13 @@ void main() {
   test('rejects missing envelope, truncated blocks and invalid padding', () {
     expect(Cryptor.decryptWithKey(Uint8List(0), key), isNull);
     expect(Cryptor.decryptWithKey(Uint8List(32), key), isNull);
+    expect(
+      Cryptor.decryptWithKey(
+        Uint8List.fromList([...utf8.encode('Salted__'), ...Uint8List(8)]),
+        key,
+      ),
+      isNull,
+    );
     final bytes = base64Decode(vectors.first['ciphertext'] as String);
     expect(
       () => Cryptor.decryptWithKey(bytes.sublist(0, bytes.length - 1), key),

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:html/dom.dart';
 import 'package:pointycastle/export.dart';
 import 'package:liblanis/liblanis.dart';
 import 'package:liblanis/src/session/cryptor.dart';
@@ -23,6 +24,9 @@ class _Adapter implements HttpClientAdapter {
   bool failFirst = false;
   String? loginDenial;
   String? appsRedirect;
+  String appsContentType = 'text/plain';
+  Completer<void>? homeStarted;
+  Completer<void>? releaseHome;
 
   @override
   Future<ResponseBody> fetch(
@@ -49,7 +53,15 @@ class _Adapter implements HttpClientAdapter {
         },
       );
     }
-    if (path == '/') homeRequests++;
+    if (path == '/') {
+      homeRequests++;
+      if (homeStarted != null && !homeStarted!.isCompleted) {
+        homeStarted!.complete();
+      }
+      if (releaseHome != null) {
+        await releaseHome!.future;
+      }
+    }
     if (path == '/benutzerverwaltung.php') userDataRequests++;
     return ResponseBody.fromString(
       path == '/startseite.php'
@@ -59,7 +71,9 @@ class _Adapter implements HttpClientAdapter {
           : '{}',
       failFirst && path == '/' && homeRequests == 1 ? 503 : 200,
       headers: {
-        Headers.contentTypeHeader: ['text/plain'],
+        Headers.contentTypeHeader: [
+          path == '/startseite.php' ? appsContentType : 'text/plain',
+        ],
       },
     );
   }
@@ -236,4 +250,125 @@ void main() {
     expect(cryptor.handshakes, 2);
     expect(adapter.homeRequests, 2);
   });
+
+  test(
+    'reauthenticateIfStale skips re-login after authGeneration advances',
+    () async {
+      cryptor.pauseFirst = false;
+      final observed = session.authGeneration;
+      await authenticate();
+      expect(session.authGeneration, observed + 1);
+      expect(cryptor.handshakes, 1);
+
+      await session.reauthenticateIfStale(observed);
+      expect(cryptor.handshakes, 1);
+      expect(adapter.homeRequests, 1);
+    },
+  );
+
+  test(
+    'getFastTravelMenu maps unexpected 302 redirects to UnauthorizedException',
+    () async {
+      adapter.appsRedirect = 'index.php';
+      await expectLater(
+        session.getFastTravelMenu(),
+        throwsA(isA<UnauthorizedException>()),
+      );
+    },
+  );
+
+  test(
+    'reauthenticateIfStale joins an in-flight withLoginUrl login without extra handshakes',
+    () async {
+      final observed = session.authGeneration;
+      final fullLogin = authenticate(withoutData: false);
+      await cryptor.firstHandshake.future;
+
+      final retry1 = session.reauthenticateIfStale(observed);
+      final retry2 = session.reauthenticateIfStale(observed);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      cryptor.releaseFirst.complete();
+
+      await Future.wait([fullLogin, retry1, retry2]);
+      expect(cryptor.handshakes, 1);
+      expect(adapter.homeRequests, 1);
+      expect(session.authGeneration, observed + 1);
+    },
+  );
+
+  test(
+    'reauthenticateIfStale receives normalized LanisDownException when joined login fails with 503',
+    () async {
+      adapter.failFirst = true;
+      adapter.homeStarted = Completer<void>();
+      adapter.releaseHome = Completer<void>();
+      cryptor.pauseFirst = false;
+
+      final observed = session.authGeneration;
+      final starter = expectLater(
+        authenticate(),
+        throwsA(isA<LanisDownException>()),
+      );
+      await adapter.homeStarted!.future;
+      final joined = expectLater(
+        session.reauthenticateIfStale(observed),
+        throwsA(isA<LanisDownException>()),
+      );
+      adapter.releaseHome!.complete();
+
+      await Future.wait([starter, joined]);
+      expect(adapter.homeRequests, 1);
+    },
+  );
+
+  test(
+    'reauthenticateIfStale waits for a newer in-flight login even when generation already advanced',
+    () async {
+      cryptor.pauseFirst = false;
+      final observed = session.authGeneration;
+      await authenticate();
+      expect(session.authGeneration, observed + 1);
+
+      adapter.homeStarted = Completer<void>();
+      adapter.releaseHome = Completer<void>();
+      final secondLogin = authenticate();
+      await adapter.homeStarted!.future;
+
+      var retryCompleted = false;
+      final retry = session.reauthenticateIfStale(observed).then((_) {
+        retryCompleted = true;
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(
+        retryCompleted,
+        isFalse,
+        reason: 'Retry must wait while a newer login is clearing/rebuilding cookies',
+      );
+
+      adapter.releaseHome!.complete();
+      await Future.wait([secondLogin, retry]);
+      expect(retryCompleted, isTrue);
+      expect(cryptor.handshakes, 2);
+      expect(session.authGeneration, observed + 2);
+    },
+  );
+
+  test(
+    'getFastTravelMenu accepts pre-decoded Map from application/json responses',
+    () async {
+      adapter.appsContentType = 'application/json';
+      final menu = await session.getFastTravelMenu();
+      expect(menu, isEmpty);
+    },
+  );
+
+  test(
+    'parseAccountType throws UnknownException when navbar icon is absent',
+    () {
+      expect(
+        () => session.parseAccountType(Document.html('<html><body></body></html>')),
+        throwsA(isA<UnknownException>()),
+      );
+    },
+  );
 }

@@ -26,13 +26,44 @@ class DataStorageParser
   }
 
   Future<dynamic> searchFiles(String query) async {
-    final response = await ctx.session.dio.get(
-      "https://start.schulportal.hessen.de/dateispeicher.php",
-      queryParameters: {"q": query, "a": "searchFiles"},
-      data: {"q": query, "a": "searchFiles"},
-      options: Options(contentType: "application/x-www-form-urlencoded"),
-    );
-    final data = jsonDecode(response.data);
+    if (query.trim().length < 2) {
+      return const <dynamic>[];
+    }
+    final Response<dynamic> response;
+    try {
+      response = await ctx.session.dio.get(
+        'https://start.schulportal.hessen.de/dateispeicher.php',
+        queryParameters: {'q': query, 'a': 'searchFiles'},
+      );
+    } on DioException catch (e, stack) {
+      Error.throwWithStackTrace(NetworkException.fromError(e, stack), stack);
+    }
+    if (response.statusCode == 302) {
+      throw UnauthorizedException('Data storage search redirected');
+    }
+    final dynamic data;
+    if (response.data is List || response.data is Map) {
+      data = response.data;
+    } else {
+      final body = response.data?.toString() ?? '';
+      if (body.trim().isEmpty) {
+        throw UnknownException('Empty data storage search response');
+      }
+      data = jsonDecode(body);
+    }
+    if (data is Map &&
+        data['id'] == 0 &&
+        data['text'] is String &&
+        (data['text'] as String).contains('mindestens zwei Zeichen')) {
+      return const <dynamic>[];
+    }
+    if (data is! List) {
+      throw UnknownException('Unexpected data storage search response');
+    }
+    if (data.isEmpty) return const <dynamic>[];
+    if (data[0] is! List) {
+      throw UnknownException('Unexpected data storage search results');
+    }
     return data[0];
   }
 

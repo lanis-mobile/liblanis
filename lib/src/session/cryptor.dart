@@ -158,7 +158,7 @@ class Cryptor {
     Uint8List encryptedDataWithSalt,
     Uint8List key,
   ) {
-    if (encryptedDataWithSalt.length < 16 ||
+    if (encryptedDataWithSalt.length <= 16 ||
         String.fromCharCodes(encryptedDataWithSalt.take(8)) != 'Salted__') {
       return null;
     }

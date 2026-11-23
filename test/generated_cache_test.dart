@@ -41,6 +41,8 @@ class _Adapter implements HttpClientAdapter {
 class _Session implements LanisSession {
   @override
   final Dio dio;
+  @override
+  int get authGeneration => 0;
   _Session(_Adapter adapter) : dio = Dio()..httpClientAdapter = adapter;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

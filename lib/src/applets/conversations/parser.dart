@@ -64,9 +64,39 @@ class ConversationsParser extends AppletParser<List<OverviewEntry>> {
       ),
     );
 
-    final Map<String, dynamic> encryptedJSON = jsonDecode(response.toString());
-    final String? decryptedConversations = await ctx.session.cryptor
-        .decryptStringInIsolate(encryptedJSON['rows']);
+    if (response.statusCode == 302) {
+      throw UnauthorizedException('Conversations request redirected');
+    }
+
+    final dynamic decoded;
+    if (response.data is Map) {
+      decoded = Map<String, dynamic>.from(response.data as Map);
+    } else {
+      final body = response.data?.toString() ?? '';
+      if (body.trim().isEmpty) {
+        throw UnknownException('Empty conversations response');
+      }
+      decoded = jsonDecode(body);
+    }
+    if (decoded is! Map<String, dynamic>) {
+      throw UnknownException('Unexpected conversations response format');
+    }
+
+    final dynamic rows = decoded['rows'];
+    if (rows is! String || rows.isEmpty) {
+      throw UnsaltedOrUnknownException();
+    }
+
+    String? decryptedConversations;
+    try {
+      decryptedConversations = await ctx.session.cryptor.decryptStringInIsolate(
+        rows,
+      );
+    } on ArgumentError {
+      decryptedConversations = null;
+    } on FormatException {
+      decryptedConversations = null;
+    }
 
     if (decryptedConversations == null) {
       throw UnsaltedOrUnknownException();
