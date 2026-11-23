@@ -361,6 +361,114 @@ void main() {
       }
     });
   });
+
+  group('TimeTableData', () {
+    TimetableSubject makeSubject(String id, {String? badge}) => TimetableSubject(
+      id: id,
+      name: id,
+      raum: 'R-$id',
+      lehrer: 'L',
+      badge: badge,
+      duration: 1,
+      startTime: const SphTimeOfDay(hour: 8, minute: 0),
+      endTime: const SphTimeOfDay(hour: 8, minute: 45),
+      stunde: 1,
+    );
+
+    final hour = TimeTableRow(
+      TimeTableRowType.lesson,
+      const SphTimeOfDay(hour: 8, minute: 0),
+      const SphTimeOfDay(hour: 8, minute: 45),
+      '1',
+      1,
+    );
+
+    test('keeps empty Wednesday in a 5-day plan', () {
+      final plan = [
+        [makeSubject('mo')],
+        [makeSubject('di')],
+        <TimetableSubject>[],
+        [makeSubject('do')],
+        [makeSubject('fr')],
+      ];
+      final data = TimeTableData(
+        plan,
+        TimeTable(hours: [hour], planForAll: plan),
+        const {},
+        null,
+      );
+
+      expect(data.timetableDays, hasLength(5));
+      expect(data.timetableDays[2], isEmpty);
+      expect(data.weekdayIndices, [0, 1, 2, 3, 4]);
+    });
+
+    test('drops empty Saturday and Sunday in a 7-day plan', () {
+      final plan = [
+        [makeSubject('mo')],
+        [makeSubject('di')],
+        [makeSubject('mi')],
+        [makeSubject('do')],
+        [makeSubject('fr')],
+        <TimetableSubject>[],
+        <TimetableSubject>[],
+      ];
+      final data = TimeTableData(
+        plan,
+        TimeTable(hours: [hour], planForAll: plan),
+        const {},
+        null,
+      );
+
+      expect(data.timetableDays, hasLength(5));
+      expect(data.weekdayIndices, [0, 1, 2, 3, 4]);
+    });
+
+    test('drops empty Saturday while keeping non-empty Sunday with index 6', () {
+      final plan = [
+        [makeSubject('mo')],
+        [makeSubject('di')],
+        [makeSubject('mi')],
+        [makeSubject('do')],
+        [makeSubject('fr')],
+        <TimetableSubject>[],
+        [makeSubject('so')],
+      ];
+      final data = TimeTableData(
+        plan,
+        TimeTable(hours: [hour], planForAll: plan),
+        const {},
+        null,
+      );
+
+      expect(data.timetableDays, hasLength(6));
+      expect(data.weekdayIndices, [0, 1, 2, 3, 4, 6]);
+    });
+
+    test('returns empty days and indices when filtering hides all lessons', () {
+      final plan = [
+        [makeSubject('mo', badge: 'A')],
+        <TimetableSubject>[],
+        [makeSubject('mi', badge: 'A')],
+      ];
+      final timetable = TimeTable(hours: [hour], planForAll: plan);
+
+      final unmatchedBadge = TimeTableData(plan, timetable, const {}, 'B');
+      expect(unmatchedBadge.timetableDays, isEmpty);
+      expect(unmatchedBadge.weekdayIndices, isEmpty);
+
+      final allHidden = TimeTableData(
+        plan,
+        timetable,
+        const {
+          'hidden-lessons': ['mo', 'mi'],
+        },
+        null,
+      );
+      expect(allHidden.timetableDays, isEmpty);
+      expect(allHidden.weekdayIndices, isEmpty);
+    });
+  });
 }
 
 class _TimetableTestAdapter implements HttpClientAdapter {

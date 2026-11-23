@@ -233,6 +233,7 @@ class TimeTableData {
   final List<TimeTableRow> hours = [];
   late final String? weekBadge;
   List<TimetableDay> timetableDays = [];
+  List<int> weekdayIndices = [];
 
   bool isCurrentWeek(TimetableSubject lesson, bool sameWeek) {
     return (weekBadge == null ||
@@ -271,20 +272,31 @@ class TimeTableData {
     }
 
     List<dynamic>? hiddenLessons = settings['hidden-lessons'];
-    for (var day in data) {
-      List<TimetableSubject> dayData = [];
-      for (var subject in day) {
+    final List<(int, TimetableDay)> filteredDays = [];
+    for (final (weekdayIndex, day) in data.indexed) {
+      final List<TimetableSubject> dayData = [];
+      for (final subject in day) {
         if (isCurrentWeek(subject, true) &&
             (hiddenLessons == null || !hiddenLessons.contains(subject.id))) {
           dayData.add(subject);
         }
       }
-      timetableDays.add(dayData);
+      filteredDays.add((weekdayIndex, dayData));
     }
 
-    timetableDays = timetableDays
-        .where((TimetableDay day) => day.isNotEmpty)
-        .toList();
+    if (filteredDays.every((entry) => entry.$2.isEmpty)) {
+      timetableDays = [];
+      weekdayIndices = [];
+      return;
+    }
+
+    // Keep Mon-Fri even when empty; hide empty weekend days (Sat/Sun) only.
+    for (final (weekdayIndex, dayData) in filteredDays) {
+      if (weekdayIndex < 5 || dayData.isNotEmpty) {
+        timetableDays.add(dayData);
+        weekdayIndices.add(weekdayIndex);
+      }
+    }
   }
 }
 
