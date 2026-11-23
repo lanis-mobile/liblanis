@@ -132,6 +132,15 @@ void main() {
     expect(await parser.searchFiles('ab'), isEmpty);
   });
 
+  test('searchFiles rejects unrelated id:0 JSON error objects', () async {
+    adapter.statusCode = 200;
+    adapter.body = jsonEncode({'id': 0, 'text': 'Zugriff verweigert'});
+    await expectLater(
+      parser.searchFiles('ab'),
+      throwsA(isA<UnknownException>()),
+    );
+  });
+
   test('searchFiles returns empty list for empty array response', () async {
     adapter.statusCode = 200;
     adapter.body = '[[]]';

@@ -51,7 +51,10 @@ class DataStorageParser
       }
       data = jsonDecode(body);
     }
-    if (data is Map && data['id'] == 0) {
+    if (data is Map &&
+        data['id'] == 0 &&
+        data['text'] is String &&
+        (data['text'] as String).contains('mindestens zwei Zeichen')) {
       return const <dynamic>[];
     }
     if (data is! List) {

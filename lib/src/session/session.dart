@@ -117,13 +117,14 @@ class LanisSession {
   /// generation share a single in-flight re-authentication instead of wiping
   /// the fresh cookie jar and encryption key back-to-back.
   Future<void> reauthenticateIfStale(int observedGeneration) async {
-    while (_authGeneration == observedGeneration) {
+    while (true) {
       final inFlight = _authentication;
       if (inFlight != null) {
         await inFlight;
         if (_authGeneration != observedGeneration) return;
         continue;
       }
+      if (_authGeneration != observedGeneration) return;
       await authenticate();
       return;
     }

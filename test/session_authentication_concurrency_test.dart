@@ -322,6 +322,38 @@ void main() {
   );
 
   test(
+    'reauthenticateIfStale waits for a newer in-flight login even when generation already advanced',
+    () async {
+      cryptor.pauseFirst = false;
+      final observed = session.authGeneration;
+      await authenticate();
+      expect(session.authGeneration, observed + 1);
+
+      adapter.homeStarted = Completer<void>();
+      adapter.releaseHome = Completer<void>();
+      final secondLogin = authenticate();
+      await adapter.homeStarted!.future;
+
+      var retryCompleted = false;
+      final retry = session.reauthenticateIfStale(observed).then((_) {
+        retryCompleted = true;
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(
+        retryCompleted,
+        isFalse,
+        reason: 'Retry must wait while a newer login is clearing/rebuilding cookies',
+      );
+
+      adapter.releaseHome!.complete();
+      await Future.wait([secondLogin, retry]);
+      expect(retryCompleted, isTrue);
+      expect(cryptor.handshakes, 2);
+      expect(session.authGeneration, observed + 2);
+    },
+  );
+
+  test(
     'getFastTravelMenu accepts pre-decoded Map from application/json responses',
     () async {
       adapter.appsContentType = 'application/json';
