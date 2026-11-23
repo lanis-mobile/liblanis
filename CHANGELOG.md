@@ -1,3 +1,20 @@
+## 0.3.2
+
+* Harden `StorageManager` paths, redirects and file cleanup.
+* Fix applet parser edge cases (study groups, lessons), model equality and cache codegen.
+* Fix `LanisSession` timer lifecycle; coalesce concurrent cached-applet fetches and
+  re-authentication so parallel retries no longer invalidate each other's session.
+* Roll back failed `addAccount` writes and self-heal orphaned account rows.
+* Map unexpected redirects and malformed responses (account type, user data,
+  fast travel, conversations) to typed `LanisException`s instead of raw
+  `TypeError`/`FormatException`; reject empty ciphertext in `Cryptor`.
+* Fix data storage search on iOS (no `GET` request body) and validate its response.
+
+## 0.3.1
+
+* Report distinct login errors for parent accounts without learners, disabled
+  accounts, and required password changes.
+
 ## 0.3.0
 
 * Replace the archived `encrypt` wrapper with PointyCastle 4 primitives, retaining

@@ -50,3 +50,6 @@ temp*
 /tool/**/*.docx
 /tool/**/*.xlsx
 /tool/**/*.pptx
+
+# Local probe dumps (personal HTML — never commit)
+tool/account_type_probe/
