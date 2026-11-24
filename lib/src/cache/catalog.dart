@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import '../applets/definition.dart';
+import '../applets/file_distribution/parser.dart';
 import '../applets/substitutions/parser.dart';
 import '../applets/timetable/parser.dart';
 import '../applets/timetable/parent_parser.dart';
 import '../database/database.dart';
 import '../models/account_types.dart';
+import '../models/file_distribution.dart';
 import '../models/substitution.dart';
 import '../models/timetable.dart';
 import '../models/timetable_parent.dart';
@@ -47,6 +49,12 @@ abstract final class CachedAppletHomes {
         applet: Applets.substitutions,
         accountType: type,
         request: SubstitutionsParserCacheRequests.getHome,
+      ),
+    for (final type in AccountType.values)
+      CachedAppletHome<FileDistributionHome>(
+        applet: Applets.fileDistribution,
+        accountType: type,
+        request: FileDistributionParserCacheRequests.getHome,
       ),
   ]);
 

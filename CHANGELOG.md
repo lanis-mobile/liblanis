@@ -1,3 +1,7 @@
+## 0.3.4
+* Adds support for the SPH `dateiverteilung.php` (Dateiverteilung) applet across `student`, `teacher`, and `parent` accounts, including typed offline caching for the overview and optional Tooladmin management endpoints.
+
+
 ## 0.3.3
 
 * Keep empty Monday–Friday weekdays in `TimeTableData` and expose `weekdayIndices`

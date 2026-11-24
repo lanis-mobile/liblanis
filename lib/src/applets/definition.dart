@@ -83,6 +83,17 @@ class Applets {
     refreshInterval: Duration(minutes: 15),
   );
 
+  static const fileDistribution = AppletMeta(
+    appletPhpUrl: 'dateiverteilung.php',
+    supportedAccountTypes: [
+      AccountType.student,
+      AccountType.teacher,
+      AccountType.parent,
+    ],
+    refreshInterval: Duration(minutes: 15),
+    allowOffline: true,
+  );
+
   static const all = [
     substitutions,
     calendar,
@@ -91,6 +102,7 @@ class Applets {
     lessons,
     dataStorage,
     studyGroups,
+    fileDistribution,
   ];
 
   static AppletMeta byPhpUrl(String phpUrl) {

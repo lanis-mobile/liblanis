@@ -5,6 +5,7 @@ import '../applets/calendar/parser.dart';
 import '../applets/conversations/parser.dart';
 import '../applets/data_storage/parser.dart';
 import '../applets/definition.dart';
+import '../applets/file_distribution/parser.dart';
 import '../applets/lessons/student_parser.dart';
 import '../applets/lessons/parent_parser.dart';
 import '../applets/lessons/teacher_parser.dart';
@@ -29,6 +30,7 @@ class EasyParsers {
   LessonsTeacherParser? _lessonsTeacher;
   DataStorageParser? _dataStorage;
   StudyGroupsStudentParser? _studyGroups;
+  FileDistributionParser? _fileDistribution;
 
   EasyParsers({
     required this._ctx,
@@ -67,6 +69,9 @@ class EasyParsers {
   StudyGroupsStudentParser get studyGroups => _studyGroups ??=
       StudyGroupsStudentParser(_ctx, isConnected: _isConnected);
 
+  FileDistributionParser get fileDistribution => _fileDistribution ??=
+      FileDistributionParser(_ctx, isConnected: _isConnected);
+
   AppletParser<dynamic> forApplet(String phpUrl) {
     final known = Applets.all.any((a) => a.appletPhpUrl == phpUrl);
     if (!known) {
@@ -90,6 +95,7 @@ class EasyParsers {
       'nachrichten.php' => conversations,
       'dateispeicher.php' => dataStorage,
       'lerngruppen.php' => studyGroups,
+      'dateiverteilung.php' => fileDistribution,
       _ => throw UnknownException('Unknown applet: $phpUrl'),
     };
   }
@@ -105,6 +111,7 @@ class EasyParsers {
     _lessonsTeacher?.dispose();
     _dataStorage?.dispose();
     _studyGroups?.dispose();
+    _fileDistribution?.dispose();
     _substitutions = null;
     _timetable = null;
     _timetableParent = null;
@@ -115,6 +122,7 @@ class EasyParsers {
     _lessonsTeacher = null;
     _dataStorage = null;
     _studyGroups = null;
+    _fileDistribution = null;
   }
 }
 
