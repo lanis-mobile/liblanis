@@ -4,6 +4,7 @@ import '../applets/applet_context.dart';
 import '../applets/calendar/parser.dart';
 import '../applets/conversations/parser.dart';
 import '../applets/data_storage/parser.dart';
+import '../applets/file_distribution/parser.dart';
 import '../applets/lessons/student_parser.dart';
 import '../applets/lessons/parent_parser.dart';
 import '../applets/lessons/teacher_parser.dart';
@@ -125,6 +126,17 @@ DataStorageParser dataStorageParser(Ref ref) {
 StudyGroupsStudentParser studyGroupsParser(Ref ref) {
   final ctx = ref.watch(appletContextProvider);
   final parser = StudyGroupsStudentParser(
+    ctx,
+    isConnected: () => _connected(ref),
+  );
+  ref.onDispose(parser.dispose);
+  return parser;
+}
+
+@Riverpod(keepAlive: true)
+FileDistributionParser fileDistributionParser(Ref ref) {
+  final ctx = ref.watch(appletContextProvider);
+  final parser = FileDistributionParser(
     ctx,
     isConnected: () => _connected(ref),
   );

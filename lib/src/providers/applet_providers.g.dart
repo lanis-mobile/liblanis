@@ -529,3 +529,51 @@ final class StudyGroupsParserProvider
 }
 
 String _$studyGroupsParserHash() => r'2de96ddc09376d2ea33582f371e195539166f0d6';
+
+@ProviderFor(fileDistributionParser)
+final fileDistributionParserProvider = FileDistributionParserProvider._();
+
+final class FileDistributionParserProvider
+    extends
+        $FunctionalProvider<
+          FileDistributionParser,
+          FileDistributionParser,
+          FileDistributionParser
+        >
+    with $Provider<FileDistributionParser> {
+  FileDistributionParserProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'fileDistributionParserProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$fileDistributionParserHash();
+
+  @$internal
+  @override
+  $ProviderElement<FileDistributionParser> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  FileDistributionParser create(Ref ref) {
+    return fileDistributionParser(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(FileDistributionParser value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<FileDistributionParser>(value),
+    );
+  }
+}
+
+String _$fileDistributionParserHash() =>
+    r'bb42354845c129552e308a3a0e0c4e7dd8cb9624';
