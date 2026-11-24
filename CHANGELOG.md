@@ -1,3 +1,8 @@
+## 0.3.3
+
+* Keep empty Monday–Friday weekdays in `TimeTableData` and expose `weekdayIndices`
+  so callers can map timetable columns to their actual weekday indices.
+
 ## 0.3.2
 
 * Harden `StorageManager` paths, redirects and file cleanup.
