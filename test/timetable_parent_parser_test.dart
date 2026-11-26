@@ -506,7 +506,7 @@ void main() {
         Applets.timetable,
         overrideAccountType: AccountType.teacher,
       ),
-      isFalse,
+      isTrue,
     );
   });
 

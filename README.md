@@ -11,7 +11,7 @@ Session stack, multi-account storage, optional `sqlite3` persistence, injectable
 | Applet | Student | Teacher | Parent | Offline Cache |
 | :--- | :---: | :---: | :---: | :---: |
 | **Vertretungsplan** (`vertretungsplan.php`) | Read | Read | Read | Yes |
-| **Stundenplan** (`stundenplan.php`) | Read | — | Read | Yes |
+| **Stundenplan** (`stundenplan.php`) | Read | Read | Read | Yes |
 | **Mein Unterricht** (`meinunterricht.php`) | Read/Write | Legacy* | Read | — |
 | **Nachrichten** (`nachrichten.php`) | Read/Write | Read/Write | Read/Write | — |
 | **Kalender** (`kalender.php`) | Read | Read | Read | — |
