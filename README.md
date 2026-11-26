@@ -6,7 +6,20 @@ Pure Dart client for [Schulportal Hessen (SPH / Lanis)](https://start.schulporta
 
 Session stack, multi-account storage, optional `sqlite3` persistence, injectable secrets, and applet parsers. **No Flutter dependency** for the core API. Flutter apps can use the Riverpod integration documented below.
 
-Published on [pub.dev](https://pub.dev/packages/liblanis). Also used as a submodule of [lanis-mobile/lanis](https://github.com/lanis-mobile/lanis).
+## Applet Support Matrix
+
+| Applet | Student | Teacher | Parent | Offline Cache |
+| :--- | :---: | :---: | :---: | :---: |
+| **Vertretungsplan** (`vertretungsplan.php`) | 👁️ | 👁️ | 👁️ | ✅ |
+| **Stundenplan** (`stundenplan.php`) | 👁️ | ❌ | 👁️ | ✅ |
+| **Mein Unterricht** (`meinunterricht.php`) | ✏️ | ✏️ ⚠️ | 👁️ | ❌ |
+| **Nachrichten** (`nachrichten.php`) | ✏️ | ✏️ | ✏️ | ❌ |
+| **Kalender** (`kalender.php`) | 👁️ | 👁️ | 👁️ | ❌ |
+| **Dateispeicher** (`dateispeicher.php`) | 👁️ | 👁️ | 👁️ | ❌ |
+| **Dateiverteilung** (`dateiverteilung.php`) | 👁️ | ✏️ | 👁️ | ✅ |
+| **Lerngruppen** (`lerngruppen.php`) | 👁️ | ❌ | ❌ | ❌ |
+
+**Legend:** ✏️ Read & Write · 👁️ Read-only · ⚠️ Outdated / not recommended · ✅ Supported · ❌ Not supported
 
 ## Features
 
@@ -87,6 +100,7 @@ Access via `client.parsers` after login:
 | `lessonsParent`  | Mein Unterricht (parent)  |
 | `lessonsTeacher` | Mein Unterricht (teacher) |
 | `dataStorage`    | Dateispeicher             |
+| `fileDistribution` | Dateiverteilung         |
 | `studyGroups`    | Lerngruppen               |
 
 
