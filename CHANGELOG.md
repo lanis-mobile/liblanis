@@ -1,3 +1,8 @@
+## 0.3.6
+
+* Parse teacher `conversationReceiverId` in Lessons (student & parent) and Study Groups.
+* Add `LessonTeacher.email` and propagate teacher email addresses alongside `conversationReceiverId` across Lessons overview, older courses, and parent pupil sections.
+
 ## 0.3.5
 
 * Extend `DataStorageParser` (`getNodeDetails`, `getRootDetails`, `parseNodeHtml`) and data storage models (`DataStorageNode`, `FolderBreadcrumb`, `FolderNode`, `FileNode`) to parse folder breadcrumbs, "Neue Dateien", folder colors/counts/write flags, and file extensions/timestamps/byte sizes while keeping `getNode` and `getRoot` backwards-compatible.

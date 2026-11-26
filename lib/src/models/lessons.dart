@@ -53,11 +53,13 @@ class Lesson {
 class LessonTeacher {
   String? teacher;
   String? teacherKuerzel;
+  String? email;
   String? conversationReceiverId;
 
   LessonTeacher({
     this.teacher,
     this.teacherKuerzel,
+    this.email,
     this.conversationReceiverId,
   });
 }

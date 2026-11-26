@@ -441,6 +441,7 @@ void main() {
               <button class="btn btn-primary dropdown-toggle btn-xs" title="Müller, Anna (MUE)">MUE</button>
               <ul class="dropdown-menu">
                 <li><a href="nachrichten.php?to[]=bC0xMDUwNDQ=}">Nachricht schreiben</a></li>
+                <li><a href="mailto:anna.mueller@example.invalid?subject=Mathe">E-Mail senden</a></li>
               </ul>
             </div>
             <span class="datum">12.11.2026</span>
@@ -483,7 +484,8 @@ void main() {
       final detailHtml = parentDetail.replaceFirst(
         '<ul><li><span>Fixture teacher</span></li></ul>',
         '<ul class="dropdown-menu"><li><span>Fixture teacher</span></li>'
-            '<li><a href="nachrichten.php?to[]=bC0xMDUwNDQ=}">Nachricht schreiben</a></li></ul>',
+            '<li><a href="nachrichten.php?to[]=bC0xMDUwNDQ=}">Nachricht schreiben</a></li>'
+            '<li><a href="mailto:anna.mueller@example.invalid">E-Mail senden</a></li></ul>',
       );
       final adapter = _Adapter(
         overviewHtml: overviewHtml,
@@ -502,8 +504,16 @@ void main() {
         'l-105044',
       );
       expect(
+        coursesFor(result, '101').single.teachers.single.email,
+        'anna.mueller@example.invalid',
+      );
+      expect(
         coursesFor(result, '102').single.teachers.single.conversationReceiverId,
         'l-105044',
+      );
+      expect(
+        coursesFor(result, '102').single.teachers.single.email,
+        'anna.mueller@example.invalid',
       );
 
       final detail = await parser.getDetailedCourseView(
@@ -511,6 +521,7 @@ void main() {
       );
       expect(adapter.requests, hasLength(2));
       expect(detail.teachers.single.conversationReceiverId, 'l-105044');
+      expect(detail.teachers.single.email, 'anna.mueller@example.invalid');
     },
   );
 }

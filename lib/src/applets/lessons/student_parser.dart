@@ -358,6 +358,7 @@ class LessonsStudentParser extends AppletParser<Lessons> {
                       ?.text
                       .trim(),
               teacherKuerzel: e.text.trim(),
+              email: parseTeacherEmail(e.parent),
               conversationReceiverId: parseTeacherConversationReceiverId(
                 e.parent,
               ),

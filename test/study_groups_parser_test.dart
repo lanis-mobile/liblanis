@@ -255,5 +255,60 @@ void main() {
         expect(teachers[3].conversationReceiverId, isNull);
       },
     );
+
+    test('parses teacher emails robustly across mailto edge cases', () {
+      const html = '''
+<html><body>
+  <table id="LGs">
+    <thead>
+      <tr><th>Halbjahr</th><th>Kursname</th><th>Lehrkraft</th></tr>
+    </thead>
+    <tbody>
+      <tr data-id="202">
+        <td>2026/1</td>
+        <td>Mathe</td>
+        <td>
+          <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle btn-sm">UPP</button>
+            <ul class="dropdown-menu">
+              <li><span>Upper, Case</span></li>
+              <li><a href=" MAILTO:upper.case@example.invalid?subject=Hello ">E-Mail</a></li>
+            </ul>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle btn-sm">ENC</button>
+            <ul class="dropdown-menu">
+              <li><span>Encoded, Mail</span></li>
+              <li><a href="mailto:encoded%40example.invalid">E-Mail</a></li>
+            </ul>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle btn-sm">EMP</button>
+            <ul class="dropdown-menu">
+              <li><span>Empty, Mail</span></li>
+              <li><a href="mailto:?subject=Empty">E-Mail</a></li>
+            </ul>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle btn-sm">INV</button>
+            <ul class="dropdown-menu">
+              <li><span>Invalid, Mail</span></li>
+              <li><a href="mailto:not-an-email">E-Mail</a></li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body></html>
+''';
+      final result = StudyGroupsStudentParser.parseDocumentHtml(parse(html));
+      final teachers = result.groups.single.teachers;
+      expect(teachers, hasLength(4));
+      expect(teachers[0].email, 'upper.case@example.invalid');
+      expect(teachers[1].email, 'encoded@example.invalid');
+      expect(teachers[2].email, isNull);
+      expect(teachers[3].email, isNull);
+    });
   });
 }

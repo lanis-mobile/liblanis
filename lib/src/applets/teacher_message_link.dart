@@ -4,6 +4,41 @@ import 'package:html/dom.dart';
 
 final RegExp _receiverIdPattern = RegExp(r'^[a-zA-Z]+-[a-zA-Z0-9_]+$');
 
+/// Extracts a teacher's email address from a teacher dropdown `.btn-group`
+/// containing a `mailto:` link.
+String? parseTeacherEmail(Element? teacherGroup) {
+  if (teacherGroup == null) return null;
+  for (final selector in const ['ul.dropdown-menu a[href]', 'a[href]']) {
+    for (final link in teacherGroup.querySelectorAll(selector)) {
+      final email = parseTeacherEmailFromHref(link.attributes['href']);
+      if (email != null) return email;
+    }
+  }
+  return null;
+}
+
+/// Extracts an email address from a `mailto:` href, stripping query parameters.
+String? parseTeacherEmailFromHref(String? rawHref) {
+  if (rawHref == null) return null;
+  final trimmed = rawHref.trim();
+  if (trimmed.length <= 'mailto:'.length) return null;
+  if (!trimmed.toLowerCase().startsWith('mailto:')) return null;
+
+  var address = trimmed.substring('mailto:'.length);
+  final queryStart = address.indexOf('?');
+  if (queryStart != -1) {
+    address = address.substring(0, queryStart);
+  }
+  try {
+    address = Uri.decodeComponent(address);
+  } on ArgumentError {
+    // Keep the raw address if percent-decoding fails.
+  }
+  address = address.trim();
+  if (address.isEmpty || !address.contains('@')) return null;
+  return address;
+}
+
 /// Extracts the Conversations receiver ID (e.g. `l-105044`) from a teacher
 /// dropdown `.btn-group` containing a `nachrichten.php?to[]=<base64>` link.
 ///

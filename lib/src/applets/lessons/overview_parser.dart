@@ -34,6 +34,7 @@ Lessons parseLessonsOverview(
                 (e) => LessonTeacher(
                   teacher: e.attributes["title"]?.split(" (")[0].trim(),
                   teacherKuerzel: e.text.trim(),
+                  email: parseTeacherEmail(e.parent),
                   conversationReceiverId: parseTeacherConversationReceiverId(
                     e.parent,
                   ),
@@ -89,19 +90,20 @@ Lessons parseLessonsOverview(
           (e) => LessonTeacher(
             teacher: e.attributes["title"]?.split(" (")[0].trim(),
             teacherKuerzel: e.text.trim(),
+            email: parseTeacherEmail(e.parent),
             conversationReceiverId: parseTeacherConversationReceiverId(
               e.parent,
             ),
           ),
         )
-        .where((t) => t.conversationReceiverId != null)
+        .where((t) => t.conversationReceiverId != null || t.email != null)
         .toList();
     discoveredTeachers.addAll(rowTeachers);
 
     if (rowCourseURL != null && rowTeachers.isNotEmpty) {
       for (var lesson in lessons) {
         if (lesson.courseURL.toString() == rowCourseURL) {
-          _applyTeacherConversationIds(lesson.teachers, rowTeachers);
+          _applyTeacherContactInfo(lesson.teachers, rowTeachers);
         }
       }
     }
@@ -154,7 +156,7 @@ Lessons parseLessonsOverview(
     }
   }
 
-  propagateLessonTeacherConversationIds(
+  propagateLessonTeacherContactInfo(
     lessons,
     additionalSources: discoveredTeachers,
   );
@@ -227,30 +229,32 @@ String requiredLessonCourseId(String url) {
 String _normalizeTeacherKey(String? value) =>
     (value ?? '').trim().toLowerCase();
 
-void _applyTeacherConversationIds(
+void _applyTeacherContactField(
   Iterable<LessonTeacher> targets,
-  Iterable<LessonTeacher> sources,
-) {
+  Iterable<LessonTeacher> sources, {
+  required String? Function(LessonTeacher) getValue,
+  required void Function(LessonTeacher, String) setValue,
+}) {
   final knownSources = [
     for (final source in sources)
-      if (source.conversationReceiverId != null &&
-          source.conversationReceiverId!.isNotEmpty)
+      if (getValue(source) case final value? when value.isNotEmpty)
         (
           krz: _normalizeTeacherKey(source.teacherKuerzel),
           name: _normalizeTeacherKey(source.teacher),
-          id: source.conversationReceiverId!,
+          value: value,
         ),
   ];
   if (knownSources.isEmpty) return;
 
   for (final target in targets) {
-    if (target.conversationReceiverId != null) continue;
+    final existing = getValue(target);
+    if (existing != null && existing.isNotEmpty) continue;
     final krz = _normalizeTeacherKey(target.teacherKuerzel);
     final name = _normalizeTeacherKey(target.teacher);
     if (krz.isEmpty && name.isEmpty) continue;
 
-    final exactPairIds = <String>{};
-    final compatibleIds = <String>{};
+    final exactPairValues = <String>{};
+    final compatibleValues = <String>{};
 
     for (final source in knownSources) {
       final krzMatches = krz.isNotEmpty && source.krz == krz;
@@ -264,22 +268,41 @@ void _applyTeacherConversationIds(
       if (krzConflicts || nameConflicts) continue;
 
       if (krzMatches && nameMatches) {
-        exactPairIds.add(source.id);
+        exactPairValues.add(source.value);
       }
-      compatibleIds.add(source.id);
+      compatibleValues.add(source.value);
     }
 
-    if (exactPairIds.length == 1) {
-      target.conversationReceiverId = exactPairIds.single;
-    } else if (exactPairIds.isEmpty && compatibleIds.length == 1) {
-      target.conversationReceiverId = compatibleIds.single;
+    if (exactPairValues.length == 1) {
+      setValue(target, exactPairValues.single);
+    } else if (exactPairValues.isEmpty && compatibleValues.length == 1) {
+      setValue(target, compatibleValues.single);
     }
   }
 }
 
-/// Propagates discovered teacher conversation receiver IDs across lessons in
-/// the same overview response without making extra network requests.
-void propagateLessonTeacherConversationIds(
+void _applyTeacherContactInfo(
+  Iterable<LessonTeacher> targets,
+  Iterable<LessonTeacher> sources,
+) {
+  _applyTeacherContactField(
+    targets,
+    sources,
+    getValue: (teacher) => teacher.conversationReceiverId,
+    setValue: (teacher, value) => teacher.conversationReceiverId = value,
+  );
+  _applyTeacherContactField(
+    targets,
+    sources,
+    getValue: (teacher) => teacher.email,
+    setValue: (teacher, value) => teacher.email = value,
+  );
+}
+
+/// Propagates discovered teacher contact info (conversation receiver IDs and
+/// email addresses) across lessons in the same overview response without making
+/// extra network requests.
+void propagateLessonTeacherContactInfo(
   Iterable<Lesson> lessons, {
   Iterable<LessonTeacher> additionalSources = const [],
 }) {
@@ -287,8 +310,9 @@ void propagateLessonTeacherConversationIds(
   final allSources = [
     ...additionalSources,
     for (final teacher in allTargets)
-      if (teacher.conversationReceiverId != null) teacher,
+      if (teacher.conversationReceiverId != null || teacher.email != null)
+        teacher,
   ];
   if (allSources.isEmpty) return;
-  _applyTeacherConversationIds(allTargets, allSources);
+  _applyTeacherContactInfo(allTargets, allSources);
 }
