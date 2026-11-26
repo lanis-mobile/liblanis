@@ -71,6 +71,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       final response = await ctx.session.dio.get(
         _base.resolve('stundenplan.php').toString(),
       );
+      _assertOkResponse(response, 'Teacher timetable overview');
       return parseOverviewDocument(parse(response.data));
     } catch (error, stack) {
       if (error is LanisException) rethrow;
@@ -93,7 +94,10 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
   Future<TeacherTimetablePlan> getTimetable(
     TeacherTimetableReference reference,
   ) async {
-    final uri = _validatePortalUrl(_base.resolveUri(reference.url));
+    final uri = _validatePortalUrl(
+      _base.resolveUri(reference.url),
+      category: reference.category,
+    );
     return _fetchPlan(uri, reference.category, reference.id);
   }
 
@@ -186,6 +190,9 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     int? weekday,
     List<int>? hours,
   }) async {
+    if (weekday != null) {
+      RangeError.checkValueInInterval(weekday, 1, 7, 'weekday');
+    }
     try {
       final url = _base.resolve('stundenplan.php?a=freeRoom').toString();
       final Response<dynamic> response;
@@ -203,6 +210,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
       }
+      _assertOkResponse(response, 'Teacher free rooms');
       return parseFreeRoomsDocument(parse(response.data));
     } catch (error, stack) {
       if (error is LanisException) rethrow;
@@ -226,6 +234,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
   ) async {
     try {
       final response = await ctx.session.dio.getUri(uri);
+      _assertOkResponse(response, 'Teacher timetable detail');
       return parsePlanDocument(
         parse(response.data),
         category: category,
@@ -248,6 +257,21 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     }
   }
 
+  static void _assertOkResponse(Response<dynamic> response, String context) {
+    final code = response.statusCode ?? 200;
+    if (code >= 300 && code < 400) {
+      final location = response.headers.value('location') ?? '';
+      if (location.toLowerCase().contains('login') ||
+          location.toLowerCase().contains('index.php')) {
+        throw UnauthorizedException('$context: redirected to $location');
+      }
+      throw UnknownException('$context: unexpected HTTP $code redirect');
+    }
+    if (code < 200 || code >= 300) {
+      throw UnknownException('$context: unexpected HTTP $code');
+    }
+  }
+
   static Uri _buildDetailUri({
     required String action,
     String? paramName,
@@ -264,7 +288,18 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     return _base.replace(path: '/stundenplan.php', queryParameters: query);
   }
 
-  static Uri _validatePortalUrl(Uri url) {
+  static String _expectedAction(TeacherTimetableCategory category) =>
+      switch (category) {
+        TeacherTimetableCategory.teacher => 'detail',
+        TeacherTimetableCategory.schoolClass => 'detail_klasse',
+        TeacherTimetableCategory.room => 'detail_raum',
+        TeacherTimetableCategory.breakSupervision => 'detail_pause',
+      };
+
+  static Uri _validatePortalUrl(
+    Uri url, {
+    TeacherTimetableCategory? category,
+  }) {
     if (url.scheme != _base.scheme ||
         url.host != _base.host ||
         url.port != _base.port ||
@@ -273,7 +308,38 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
         'Teacher timetable URL must stay on ${_base.origin}/stundenplan.php',
       );
     }
+    if (url.queryParameters.containsKey('pdf')) {
+      throw ConfigurationException(
+        'Teacher timetable URL must not request PDF output',
+      );
+    }
+    if (category != null) {
+      final expected = _expectedAction(category);
+      final actual = url.queryParameters['a'];
+      if (actual != expected) {
+        throw ConfigurationException(
+          'Teacher timetable URL action "$actual" does not match $category (expected "$expected")',
+        );
+      }
+    }
     return url;
+  }
+
+  static Uri? _tryResolve(String? href) {
+    final trimmed = href?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    final parsed = Uri.tryParse(trimmed);
+    if (parsed == null) return null;
+    return _base.resolveUri(parsed);
+  }
+
+  static Iterable<Element> _linksWithAction(Element root, String action) sync* {
+    for (final a in root.querySelectorAll('a[href]')) {
+      final resolved = _tryResolve(a.attributes['href']);
+      if (resolved != null && resolved.queryParameters['a'] == action) {
+        yield a;
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -293,12 +359,12 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     }
 
     Uri? ownUrl;
-    for (final a in content.querySelectorAll('a.btn[href*="stundenplan.php"]')) {
-      final href = a.attributes['href']?.trim();
-      if (href == null || href.isEmpty) continue;
-      final uri = _base.resolve(href);
-      if (uri.queryParameters['a'] == 'detail') {
-        ownUrl = Uri.parse(href);
+    for (final a in content.querySelectorAll('a.btn[href]')) {
+      final resolved = _tryResolve(a.attributes['href']);
+      if (resolved != null &&
+          resolved.path == '/stundenplan.php' &&
+          resolved.queryParameters['a'] == 'detail') {
+        ownUrl = resolved;
         break;
       }
     }
@@ -322,18 +388,17 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
         hasTeachersPanel = true;
       }
 
-      final freeLink = panel.querySelector('a[href*="a=freeRoom"]');
-      if (freeLink != null) {
-        final href = freeLink.attributes['href']?.trim();
-        if (href != null && href.isNotEmpty) {
-          freeRoomsUrl = Uri.parse(href);
+      for (final freeLink in _linksWithAction(panel, 'freeRoom')) {
+        final resolved = _tryResolve(freeLink.attributes['href']);
+        if (resolved != null) {
+          freeRoomsUrl = resolved;
+          break;
         }
       }
 
       for (final link in panel.querySelectorAll('a.list-group-item[href]')) {
-        final href = link.attributes['href']?.trim();
-        if (href == null || href.isEmpty) continue;
-        final resolved = _base.resolve(href);
+        final resolved = _tryResolve(link.attributes['href']);
+        if (resolved == null) continue;
         final action = resolved.queryParameters['a'];
         final label = _cleanText(link.text);
 
@@ -346,7 +411,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
                   category: TeacherTimetableCategory.teacher,
                   id: id,
                   label: label,
-                  url: Uri.parse(href),
+                  url: resolved,
                 ),
               );
             }
@@ -358,7 +423,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
                   category: TeacherTimetableCategory.schoolClass,
                   id: id,
                   label: label,
-                  url: Uri.parse(href),
+                  url: resolved,
                 ),
               );
             }
@@ -370,7 +435,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
                   category: TeacherTimetableCategory.room,
                   id: id,
                   label: label,
-                  url: Uri.parse(href),
+                  url: resolved,
                 ),
               );
             }
@@ -382,7 +447,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
                   category: TeacherTimetableCategory.breakSupervision,
                   id: id,
                   label: label,
-                  url: Uri.parse(href),
+                  url: resolved,
                 ),
               );
             }
@@ -435,7 +500,10 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     final title = _extractTitle(h1);
 
     final planRoot = content.querySelector('.plan');
-    final planDate = planRoot?.attributes['data-date']?.trim();
+    if (planRoot == null) {
+      throw UnknownException('Missing teacher timetable plan (.plan)');
+    }
+    final planDate = planRoot.attributes['data-date']?.trim();
     final validFromLabel = _extractValidFrom(planRoot);
     final weekBadge = document.querySelector('#aktuelleWoche')?.text.trim();
     final noticeHtml = _extractNoticeHtml(content);
@@ -471,13 +539,15 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       final rawVal = selected?.attributes['value']?.trim();
       if (rawVal != null && rawVal.isNotEmpty) {
         resolvedTargetId = _safeDecode(rawVal);
-      } else {
+      } else if (category == TeacherTimetableCategory.teacher) {
         final codeMatch = RegExp(r'\(([^)]+)\)\s*$').firstMatch(title);
         resolvedTargetId = codeMatch?.group(1)?.trim() ?? title;
+      } else {
+        resolvedTargetId = title;
       }
     }
 
-    final table = planRoot?.querySelector('table');
+    final table = planRoot.querySelector('table');
     final tbody = table?.querySelector('tbody');
     if (table == null || tbody == null) {
       return TeacherTimetablePlan(
@@ -545,9 +615,12 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     }
 
     final tagSelect = content.querySelector('select#tag, select[name="tag"]');
+    if (tagSelect == null) {
+      throw UnknownException('Missing free rooms form (select#tag)');
+    }
     final selectedTag =
-        tagSelect?.querySelector('option[selected]')?.attributes['value'] ??
-        tagSelect?.querySelector('option')?.attributes['value'];
+        tagSelect.querySelector('option[selected]')?.attributes['value'] ??
+        tagSelect.querySelector('option')?.attributes['value'];
     final weekday = int.tryParse(selectedTag ?? '') ?? 1;
 
     final availableHours = <int>[];
@@ -562,10 +635,11 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     }
 
     final rooms = <TeacherTimetableReference>[];
-    for (final link in content.querySelectorAll('ul li a[href*="detail_raum"]')) {
-      final href = link.attributes['href']?.trim();
-      if (href == null || href.isEmpty) continue;
-      final resolved = _base.resolve(href);
+    for (final link in content.querySelectorAll('ul li a[href]')) {
+      final resolved = _tryResolve(link.attributes['href']);
+      if (resolved == null || resolved.queryParameters['a'] != 'detail_raum') {
+        continue;
+      }
       final id = resolved.queryParameters['r'] ?? _cleanText(link.text);
       if (id.isEmpty) continue;
       rooms.add(
@@ -573,7 +647,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
           category: TeacherTimetableCategory.room,
           id: id,
           label: _cleanText(link.text),
-          url: Uri.parse(href),
+          url: resolved,
         ),
       );
     }
@@ -596,9 +670,11 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     );
     if (err == null) return;
     final text = _cleanText(err.text);
-    if (text.contains('nicht erlaubt') ||
-        text.contains('keine Berechtigung') ||
-        text.contains('Zugriff')) {
+    final lower = text.toLowerCase();
+    if (lower.contains('nicht erlaubt') ||
+        lower.contains('keine berechtigung') ||
+        lower.contains('kein zugriff') ||
+        lower.contains('zugriff verweigert')) {
       throw UnauthorizedException(text);
     }
     throw UnknownException(text.isEmpty ? 'Teacher timetable error' : text);
@@ -643,11 +719,15 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
 
     for (final alert in content.querySelectorAll('.alert.alert-info')) {
       if (alert.classes.contains('mailInfo')) {
-        for (final mail in alert.querySelectorAll('a[href^="mailto:"]')) {
+        for (final mail in alert.querySelectorAll('a[href^="mailto:"], a[href^="MAILTO:"]')) {
           final href = mail.attributes['href'] ?? '';
-          final email = href.replaceFirst(RegExp(r'^mailto:\s*'), '').trim();
+          final email = href
+              .replaceFirst(RegExp(r'^mailto:\s*', caseSensitive: false), '')
+              .split('?')
+              .first
+              .trim();
           final text = _cleanText(mail.text);
-          // Format: "alessio caputo (CAP)" <contact@alessioc42.dev>
+          // Format: "Max Mustermann (MUM)" <max.mustermann@example.org>
           final match = RegExp(
             r'"?([^"(<]+?)\s*\(([^)]+)\)"?',
           ).firstMatch(text);
@@ -797,8 +877,9 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       if (rowIndex == 0) continue;
       for (var (colIndex, colElement) in rowElement.children.indexed) {
         if (colIndex == 0) continue;
-        final rowSpan =
+        final rawSpan =
             int.tryParse(colElement.attributes['rowspan'] ?? '1') ?? 1;
+        final rowSpan = rawSpan < 1 ? 1 : rawSpan;
 
         var actualDay = colIndex - 1;
         while (actualDay < dayCount && alreadyParsed[rowIndex][actualDay]) {
@@ -919,8 +1000,8 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     final teachers = <String>[];
     String? location;
 
-    final teacherLink = el.querySelector('a[href*="a=detail&"]');
-    final pauseLink = el.querySelector('a[href*="a=detail_pause"]');
+    final teacherLink = _linksWithAction(el, 'detail').firstOrNull;
+    final pauseLink = _linksWithAction(el, 'detail_pause').firstOrNull;
 
     if (category == TeacherTimetableCategory.breakSupervision) {
       location = pageTitle.isNotEmpty ? pageTitle : pageTargetId;
@@ -1027,9 +1108,9 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       }
     }
 
-    // Classes from `a[href*="detail_klasse"]`.
+    // Classes from `a[href]` with `a=detail_klasse`.
     final classes = <String>[];
-    for (final a in row.querySelectorAll('a[href*="detail_klasse"]')) {
+    for (final a in _linksWithAction(row, 'detail_klasse')) {
       final t = _cleanText(a.text);
       if (t.isNotEmpty && !classes.contains(t)) {
         classes.add(t);
@@ -1041,10 +1122,10 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       classes.add(pageTargetId);
     }
 
-    // Room from `a[href*="detail_raum"]`, or plain text `in <room>` inside `<small>`,
+    // Room from `a[href]` with `a=detail_raum`, or plain text `in <room>` inside `<small>`,
     // or pageTargetId when on `detail_raum`.
     String? room;
-    final roomLink = row.querySelector('a[href*="detail_raum"]');
+    final roomLink = _linksWithAction(row, 'detail_raum').firstOrNull;
     if (roomLink != null) {
       final t = _cleanText(roomLink.text);
       if (t.isNotEmpty) room = t;
@@ -1059,16 +1140,10 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
         )) {
           continue;
         }
-        final smallText = _cleanText(small.text);
+        final smallText = _cleanTextWithoutBadges(small);
         final inMatch = RegExp(r'^in\s+(.+)$').firstMatch(smallText);
         if (inMatch != null) {
-          // Strip trailing week badge text if it was inside <small>.
-          var candidate = inMatch.group(1)!.trim();
-          if (badge != null && candidate.endsWith(' $badge')) {
-            candidate = candidate
-                .substring(0, candidate.length - badge.length)
-                .trim();
-          }
+          final candidate = inMatch.group(1)!.trim();
           if (candidate.isNotEmpty) {
             room = candidate;
             break;
@@ -1082,10 +1157,10 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       room = pageTargetId;
     }
 
-    // Teachers from `a[href*="a=detail&"]`, or plain text inside `<small>` on
+    // Teachers from `a[href]` with `a=detail`, or plain text inside `<small>` on
     // `detail_klasse` / `<small><b>...</b>` on `detail_raum` when `teacherCanSee=own`.
     final teachers = <String>[];
-    for (final a in row.querySelectorAll('a[href*="a=detail&"]')) {
+    for (final a in _linksWithAction(row, 'detail')) {
       final t = _cleanText(a.text);
       if (t.isNotEmpty && !teachers.contains(t)) {
         teachers.add(t);
@@ -1095,7 +1170,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       if (category == TeacherTimetableCategory.schoolClass) {
         final small = _primarySmall(row);
         if (small != null) {
-          final t = _cleanText(small.text);
+          final t = _cleanTextWithoutBadges(small);
           if (t.isNotEmpty && !t.startsWith('in ')) {
             teachers.add(t);
           }
@@ -1137,6 +1212,14 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       substitutionCreateUrl: substitutionCreateUrl,
       externalUrl: externalUrl,
     );
+  }
+
+  static String _cleanTextWithoutBadges(Element element) {
+    final clone = element.clone(true);
+    for (final b in clone.querySelectorAll('.badge')) {
+      b.remove();
+    }
+    return _cleanText(clone.text);
   }
 
   static Element? _primarySmall(Element row) {

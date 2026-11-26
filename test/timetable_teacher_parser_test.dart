@@ -23,6 +23,8 @@ class _Adapter implements HttpClientAdapter {
   String freeRoomsHtml = _fixture('free_rooms_post');
   bool denyOtherTeacher = false;
   bool failTransport = false;
+  int? overrideStatusCode;
+  String? redirectLocation;
 
   @override
   Future<ResponseBody> fetch(
@@ -36,6 +38,15 @@ class _Adapter implements HttpClientAdapter {
         requestOptions: options,
         type: DioExceptionType.connectionError,
         message: 'fixture transport failure',
+      );
+    }
+    if (overrideStatusCode != null) {
+      return ResponseBody.fromString(
+        '',
+        overrideStatusCode!,
+        headers: {
+          if (redirectLocation != null) 'location': [redirectLocation!],
+        },
       );
     }
     if (options.uri.path != '/stundenplan.php') {
@@ -461,6 +472,146 @@ void main() {
         container.read(timetableTeacherParserProvider),
         isA<TimetableTeacherParser>(),
       );
+    });
+
+    test('normalizes reference URLs, validates portal URLs, and caches getTimetable', () async {
+      final overview = await parser.getHome();
+      final roomRef = overview.rooms.first;
+      expect(roomRef.url.isAbsolute, isTrue);
+      expect(roomRef.url.host, 'start.schulportal.hessen.de');
+      expect(overview.ownTimetableUrl?.isAbsolute, isTrue);
+      expect(overview.freeRoomsUrl?.isAbsolute, isTrue);
+
+      final cachedPlan = await parser.cached.getTimetable(roomRef);
+      expect(cachedPlan.data.bookableInRumbs, isTrue);
+      expect(cachedPlan.data, equals(await parser.getTimetable(roomRef)));
+
+      // Reject wrong host, pdf=1, and mismatched action
+      await expectLater(
+        () => parser.getTimetable(
+          TeacherTimetableReference(
+            category: TeacherTimetableCategory.room,
+            id: 'R102',
+            label: 'R102',
+            url: Uri.parse('https://evil.example/stundenplan.php?a=detail_raum&r=R102'),
+          ),
+        ),
+        throwsA(isA<ConfigurationException>()),
+      );
+      await expectLater(
+        () => parser.getTimetable(
+          TeacherTimetableReference(
+            category: TeacherTimetableCategory.room,
+            id: 'R102',
+            label: 'R102',
+            url: Uri.parse('https://start.schulportal.hessen.de/stundenplan.php?a=detail_raum&r=R102&pdf=1'),
+          ),
+        ),
+        throwsA(isA<ConfigurationException>()),
+      );
+      await expectLater(
+        () => parser.getTimetable(
+          TeacherTimetableReference(
+            category: TeacherTimetableCategory.room,
+            id: 'R102',
+            label: 'R102',
+            url: Uri.parse('https://start.schulportal.hessen.de/stundenplan.php?a=detail_klasse&k=1'),
+          ),
+        ),
+        throwsA(isA<ConfigurationException>()),
+      );
+    });
+
+    test('handles getOwnTimetable, GET getFreeRooms, weekday validation, HTTP 302, and errors', () async {
+      final own = await parser.getOwnTimetable();
+      expect(own.targetId, isNotEmpty);
+
+      final freeGet = await parser.getFreeRooms();
+      expect(adapter.requests.last.method, 'GET');
+      expect(freeGet.rooms.first.url.isAbsolute, isTrue);
+
+      await expectLater(
+        () => parser.getFreeRooms(weekday: 0, hours: [1]),
+        throwsA(isA<RangeError>()),
+      );
+
+      // Denied other teacher -> UnauthorizedException
+      adapter.denyOtherTeacher = true;
+      await expectLater(
+        () => parser.getTeacherTimetable('CAP'),
+        throwsA(isA<UnauthorizedException>()),
+      );
+      adapter.denyOtherTeacher = false;
+
+      // HTTP 302 redirect to login -> UnauthorizedException (not empty cached plan)
+      adapter.overrideStatusCode = 302;
+      adapter.redirectLocation = '/index.php';
+      await expectLater(() => parser.getHome(), throwsA(isA<UnauthorizedException>()));
+      await expectLater(() => parser.getRoomTimetable('R102'), throwsA(isA<UnauthorizedException>()));
+      await expectLater(() => parser.getFreeRooms(), throwsA(isA<UnauthorizedException>()));
+      adapter.overrideStatusCode = null;
+      adapter.redirectLocation = null;
+
+      // Transport failure -> NetworkException
+      adapter.failTransport = true;
+      await expectLater(() => parser.getHome(), throwsA(isA<NetworkException>()));
+      await expectLater(() => parser.getRoomTimetable('R102'), throwsA(isA<NetworkException>()));
+      await expectLater(() => parser.getFreeRooms(), throwsA(isA<NetworkException>()));
+    });
+
+    test('rejects unexpected HTML without .plan or select#tag, keeps non-teacher parentheses, strips badges, clamps rowspan', () {
+      expect(
+        () => TimetableTeacherParser.parsePlanHtml(
+          '<div id="content"><h1>Login</h1></div>',
+          category: TeacherTimetableCategory.room,
+        ),
+        throwsA(isA<UnknownException>()),
+      );
+      expect(
+        () => TimetableTeacherParser.parseFreeRoomsHtml(
+          '<div id="content"><h1>Unexpected</h1></div>',
+        ),
+        throwsA(isA<UnknownException>()),
+      );
+
+      // Non-teacher title with parentheses retains full title as targetId
+      final roomWithParens = TimetableTeacherParser.parsePlanHtml(
+        '<div id="content"><h1>Raum 101 (Musik) <small>Stundenplan</small></h1><div class="plan"></div></div>',
+        category: TeacherTimetableCategory.room,
+      );
+      expect(roomWithParens.targetId, 'Raum 101 (Musik)');
+
+      // Badge inside <small> is stripped from teacher name, and rowspan="0" is clamped to 1
+      final badgeAndRowspan = TimetableTeacherParser.parsePlanHtml(
+        '''
+        <div id="content">
+          <h1>10a <small>Stundenplan</small></h1>
+          <div class="plan">
+            <table>
+              <thead><tr><th>Stunde</th><th>Montag</th></tr></thead>
+              <tbody>
+                <tr><td></td><td></td></tr>
+                <tr>
+                  <td><b>1</b><br><small>08:00 - 08:45</small></td>
+                  <td rowspan="0">
+                    <div class="stunde">
+                      <b>Mathe</b><br>
+                      <small>CAP <span class="badge">B</span></small>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        ''',
+        category: TeacherTimetableCategory.schoolClass,
+        targetId: '10a',
+      );
+      final entry = badgeAndRowspan.days[0].single;
+      expect(entry.teachers, ['CAP']);
+      expect(entry.badge, 'B');
+      expect(entry.duration, 1);
     });
   });
 }

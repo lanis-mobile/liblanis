@@ -1,6 +1,24 @@
 import 'time_of_day.dart';
 import 'timetable.dart';
 
+bool _listEquals<T>(List<T> a, List<T> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+bool _nestedListEquals<T>(List<List<T>> a, List<List<T>> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (!_listEquals(a[i], b[i])) return false;
+  }
+  return true;
+}
+
 /// The four lookup categories available in the teacher `stundenplan.php` view.
 enum TeacherTimetableCategory {
   teacher,
@@ -139,6 +157,30 @@ class TeacherTimetableOverview {
                 TeacherTimetableReference.fromJson(e as Map<String, dynamic>),
           )
           .toList();
+
+  @override
+  bool operator ==(Object other) =>
+      other is TeacherTimetableOverview &&
+      ownTimetableUrl == other.ownTimetableUrl &&
+      _listEquals(teachers, other.teachers) &&
+      _listEquals(classes, other.classes) &&
+      _listEquals(rooms, other.rooms) &&
+      _listEquals(breakSupervisions, other.breakSupervisions) &&
+      canViewOtherTeachers == other.canViewOtherTeachers &&
+      freeRoomsUrl == other.freeRoomsUrl &&
+      noticeHtml == other.noticeHtml;
+
+  @override
+  int get hashCode => Object.hash(
+    ownTimetableUrl,
+    Object.hashAll(teachers),
+    Object.hashAll(classes),
+    Object.hashAll(rooms),
+    Object.hashAll(breakSupervisions),
+    canViewOtherTeachers,
+    freeRoomsUrl,
+    noticeHtml,
+  );
 }
 
 /// Teacher contact entry parsed from the room-plan teacher summary (`detail_raum`).
@@ -277,6 +319,48 @@ class TeacherTimetableEntry {
   }
 
   @override
+  bool operator ==(Object other) =>
+      other is TeacherTimetableEntry &&
+      id == other.id &&
+      kind == other.kind &&
+      subject == other.subject &&
+      course == other.course &&
+      room == other.room &&
+      _listEquals(teachers, other.teachers) &&
+      _listEquals(classes, other.classes) &&
+      supervisionLocation == other.supervisionLocation &&
+      badge == other.badge &&
+      embeddedDate == other.embeddedDate &&
+      tooltip == other.tooltip &&
+      duration == other.duration &&
+      startTime == other.startTime &&
+      endTime == other.endTime &&
+      hourIndex == other.hourIndex &&
+      substitutionCreateUrl == other.substitutionCreateUrl &&
+      externalUrl == other.externalUrl;
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    kind,
+    subject,
+    course,
+    room,
+    Object.hashAll(teachers),
+    Object.hashAll(classes),
+    supervisionLocation,
+    badge,
+    embeddedDate,
+    tooltip,
+    duration,
+    startTime,
+    endTime,
+    hourIndex,
+    substitutionCreateUrl,
+    externalUrl,
+  );
+
+  @override
   String toString() =>
       'TeacherTimetableEntry($kind, subject=$subject, room=$room, teachers=$teachers, classes=$classes, supervision=$supervisionLocation, badge=$badge, date=$embeddedDate)';
 }
@@ -413,6 +497,48 @@ class TeacherTimetablePlan {
             )
             .toList(),
       );
+
+  @override
+  bool operator ==(Object other) =>
+      other is TeacherTimetablePlan &&
+      category == other.category &&
+      targetId == other.targetId &&
+      title == other.title &&
+      validFromLabel == other.validFromLabel &&
+      planDate == other.planDate &&
+      exemplar == other.exemplar &&
+      timesHidden == other.timesHidden &&
+      weekBadge == other.weekBadge &&
+      noticeHtml == other.noticeHtml &&
+      bookableInRumbs == other.bookableInRumbs &&
+      rumbsUrl == other.rumbsUrl &&
+      _listEquals(roomTeachers, other.roomTeachers) &&
+      _listEquals(roomTeacherContacts, other.roomTeacherContacts) &&
+      _listEquals(availableTargets, other.availableTargets) &&
+      _listEquals(weekdayIndices, other.weekdayIndices) &&
+      _listEquals(hours, other.hours) &&
+      _nestedListEquals(days, other.days);
+
+  @override
+  int get hashCode => Object.hash(
+    category,
+    targetId,
+    title,
+    validFromLabel,
+    planDate,
+    exemplar,
+    timesHidden,
+    weekBadge,
+    noticeHtml,
+    bookableInRumbs,
+    rumbsUrl,
+    Object.hashAll(roomTeachers),
+    Object.hashAll(roomTeacherContacts),
+    Object.hashAll(availableTargets),
+    Object.hashAll(weekdayIndices),
+    Object.hashAll(hours),
+    Object.hashAll(days.map(Object.hashAll)),
+  );
 }
 
 /// Result of `stundenplan.php?a=freeRoom` (GET or POST).
@@ -457,4 +583,20 @@ class TeacherFreeRoomsResult {
             )
             .toList(),
       );
+
+  @override
+  bool operator ==(Object other) =>
+      other is TeacherFreeRoomsResult &&
+      weekday == other.weekday &&
+      _listEquals(selectedHours, other.selectedHours) &&
+      _listEquals(availableHours, other.availableHours) &&
+      _listEquals(rooms, other.rooms);
+
+  @override
+  int get hashCode => Object.hash(
+    weekday,
+    Object.hashAll(selectedHours),
+    Object.hashAll(availableHours),
+    Object.hashAll(rooms),
+  );
 }
