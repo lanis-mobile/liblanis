@@ -5,6 +5,7 @@ import '../../models/study_groups.dart';
 import '../applet_context.dart';
 import '../applet_parser.dart';
 import '../definition.dart';
+import '../teacher_message_link.dart';
 
 class StudyGroupsStudentParser extends AppletParser<StudentStudyGroups> {
   static final RegExp _examDatePattern = RegExp(r'(\d{2})\.(\d{2})\.(\d{4})');
@@ -165,6 +166,9 @@ class StudyGroupsStudentParser extends AppletParser<StudentStudyGroups> {
                         .trim() ??
                     '',
                 email: _parseTeacherEmail(teacherGroup),
+                conversationReceiverId: parseTeacherConversationReceiverId(
+                  teacherGroup,
+                ),
               ),
             );
           }

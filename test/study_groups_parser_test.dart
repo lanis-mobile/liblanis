@@ -85,11 +85,13 @@ void main() {
         expect(math.teachers[0].lastName, 'Müller');
         expect(math.teachers[0].firstName, 'Anna');
         expect(math.teachers[0].email, 'anna.mueller@example.invalid');
+        expect(math.teachers[0].conversationReceiverId, isNull);
 
         expect(math.teachers[1].krz, 'SCH');
         expect(math.teachers[1].lastName, 'Schmidt');
         expect(math.teachers[1].firstName, 'Max');
         expect(math.teachers[1].email, isNull);
+        expect(math.teachers[1].conversationReceiverId, isNull);
 
         final german = result.groups[1];
         expect(german.courseName, 'Deutsch');
@@ -191,6 +193,66 @@ void main() {
         expect(result.groups, hasLength(1));
         expect(result.groups.single.courseSysId, '');
         expect(result.groups.single.exams, hasLength(3));
+      },
+    );
+
+    test(
+      'parses conversation receiver IDs from nachrichten.php links including trailing brace quirk',
+      () {
+        const html = '''
+<html><body>
+  <table id="LGs">
+    <thead>
+      <tr><th>Halbjahr</th><th>Kursname</th><th>Lehrkraft</th></tr>
+    </thead>
+    <tbody>
+      <tr data-id="201">
+        <td>2026/1</td>
+        <td>Informatik</td>
+        <td>
+          <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle btn-sm">CAP</button>
+            <ul class="dropdown-menu">
+              <li><span>Caputo, Alessio</span></li>
+              <li class="divider"></li>
+              <li><a href="nachrichten.php?to[]=bC0zMTY5ODM=}">Nachricht senden</a></li>
+            </ul>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle btn-sm">RAS</button>
+            <ul class="dropdown-menu">
+              <li><span>Schirmer, Rajan</span></li>
+              <li><a href="nachrichten.php?to[]=bC0yNjgxMzg=">Nachricht senden</a></li>
+            </ul>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle btn-sm">DIR</button>
+            <ul class="dropdown-menu">
+              <li><span>Direct, Teacher</span></li>
+              <li><a href="nachrichten.php?to[]=l-105044">Nachricht senden</a></li>
+            </ul>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle btn-sm">BAD</button>
+            <ul class="dropdown-menu">
+              <li><span>Invalid, Link</span></li>
+              <li><a href="nachrichten.php?to[]=!!!not-base64!!!">Nachricht senden</a></li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body></html>
+''';
+
+        final result = StudyGroupsStudentParser.parseDocumentHtml(parse(html));
+        final teachers = result.groups.single.teachers;
+        expect(teachers, hasLength(4));
+        expect(teachers[0].conversationReceiverId, 'l-316983');
+        expect(teachers[1].conversationReceiverId, 'l-268138');
+        expect(teachers[2].conversationReceiverId, 'l-105044');
+        expect(teachers[3].conversationReceiverId, isNull);
       },
     );
   });

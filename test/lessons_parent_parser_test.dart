@@ -424,4 +424,93 @@ void main() {
       }
     },
   );
+
+  test(
+    'parent overview propagates teacher conversationReceiverId across pupils with one request',
+    () async {
+      const overviewHtml = '''
+<div id="content">
+  <div class="pupilbox">
+    <h2 data-pupil="101">Pupil 101</h2>
+    <div id="aktuell101">
+      <table><tbody>
+        <tr class="printable" data-entry="1">
+          <td>
+            <h3><a href="meinunterricht.php?a=sus_view&amp;id=1001&amp;p=101">Mathe</a></h3>
+            <div class="btn-group">
+              <button class="btn btn-primary dropdown-toggle btn-xs" title="Müller, Anna (MUE)">MUE</button>
+              <ul class="dropdown-menu">
+                <li><a href="nachrichten.php?to[]=bC0xMDUwNDQ=}">Nachricht schreiben</a></li>
+              </ul>
+            </div>
+            <span class="datum">12.11.2026</span>
+            <span class="thema">Algebra</span>
+          </td>
+        </tr>
+      </tbody></table>
+    </div>
+    <div id="mappen101">
+      <div class="row">
+        <div>
+          <h2>Mathe</h2>
+          <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle btn-md" title="Müller, Anna (MUE)">MUE</button>
+            <ul class="dropdown-menu"><li><span>Müller, Anna</span></li></ul>
+          </div>
+          <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=1001&amp;p=101">Open</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pupilbox">
+    <h2 data-pupil="102">Pupil 102</h2>
+    <div id="aktuell102"></div>
+    <div id="mappen102">
+      <div class="row">
+        <div>
+          <h2>Mathe</h2>
+          <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle btn-md" title="Müller, Anna (MUE)">MUE</button>
+            <ul class="dropdown-menu"><li><span>Müller, Anna</span></li></ul>
+          </div>
+          <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=1001&amp;p=102">Open</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+''';
+      final detailHtml = parentDetail.replaceFirst(
+        '<ul><li><span>Fixture teacher</span></li></ul>',
+        '<ul class="dropdown-menu"><li><span>Fixture teacher</span></li>'
+            '<li><a href="nachrichten.php?to[]=bC0xMDUwNDQ=}">Nachricht schreiben</a></li></ul>',
+      );
+      final adapter = _Adapter(
+        overviewHtml: overviewHtml,
+        detailHtml: detailHtml,
+      );
+      final parser = LessonsParentParser(
+        _Context(adapter),
+        isConnected: () async => true,
+      );
+      addTearDown(parser.dispose);
+
+      final result = await parser.getHome();
+      expect(adapter.requests, hasLength(1));
+      expect(
+        coursesFor(result, '101').single.teachers.single.conversationReceiverId,
+        'l-105044',
+      );
+      expect(
+        coursesFor(result, '102').single.teachers.single.conversationReceiverId,
+        'l-105044',
+      );
+
+      final detail = await parser.getDetailedCourseView(
+        'meinunterricht.php?a=sus_view&id=1001&p=101',
+      );
+      expect(adapter.requests, hasLength(2));
+      expect(detail.teachers.single.conversationReceiverId, 'l-105044');
+    },
+  );
 }

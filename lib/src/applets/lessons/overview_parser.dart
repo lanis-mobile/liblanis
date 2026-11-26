@@ -3,6 +3,7 @@ import 'package:html/dom.dart';
 import '../../exceptions.dart';
 import '../../models/file_info.dart';
 import '../../models/lessons.dart';
+import '../teacher_message_link.dart';
 
 /// Shared HTML parsing for student and per-pupil parent overview sections.
 Lessons parseLessonsOverview(
@@ -33,6 +34,9 @@ Lessons parseLessonsOverview(
                 (e) => LessonTeacher(
                   teacher: e.attributes["title"]?.split(" (")[0].trim(),
                   teacherKuerzel: e.text.trim(),
+                  conversationReceiverId: parseTeacherConversationReceiverId(
+                    e.parent,
+                  ),
                 ),
               )
               .toList(),
@@ -73,8 +77,35 @@ Lessons parseLessonsOverview(
   }
 
   //Aktuelle Einträge
+  final discoveredTeachers = <LessonTeacher>[];
   var schoolClasses = scope.querySelectorAll("tr.printable");
   for (var schoolClass in schoolClasses) {
+    final rowCourseURL = schoolClass
+        .querySelector("td>h3>a")
+        ?.attributes["href"];
+    final rowTeachers = schoolClass
+        .querySelectorAll("div.btn-group:not(.files)>button")
+        .map<LessonTeacher>(
+          (e) => LessonTeacher(
+            teacher: e.attributes["title"]?.split(" (")[0].trim(),
+            teacherKuerzel: e.text.trim(),
+            conversationReceiverId: parseTeacherConversationReceiverId(
+              e.parent,
+            ),
+          ),
+        )
+        .where((t) => t.conversationReceiverId != null)
+        .toList();
+    discoveredTeachers.addAll(rowTeachers);
+
+    if (rowCourseURL != null && rowTeachers.isNotEmpty) {
+      for (var lesson in lessons) {
+        if (lesson.courseURL.toString() == rowCourseURL) {
+          _applyTeacherConversationIds(lesson.teachers, rowTeachers);
+        }
+      }
+    }
+
     if (schoolClass.querySelector(".datum") != null) {
       String? topicTitle = schoolClass.querySelector(".thema")?.text.trim();
       String? topicDateString = schoolClass
@@ -84,9 +115,7 @@ Lessons parseLessonsOverview(
       DateTime? topicDate = DateTime.parse(
         topicDateString!.split(".").reversed.join("-"),
       );
-      String? courseURL = schoolClass
-          .querySelector("td>h3>a")
-          ?.attributes["href"];
+      String? courseURL = rowCourseURL;
       int fileCount = schoolClass.getElementsByClassName('file').length;
 
       Homework? homework;
@@ -124,6 +153,11 @@ Lessons parseLessonsOverview(
       }
     }
   }
+
+  propagateLessonTeacherConversationIds(
+    lessons,
+    additionalSources: discoveredTeachers,
+  );
 
   //Anwesenheiten
   var anwesendDOM = scope.querySelector('[id="$attendanceId"]');
@@ -188,4 +222,73 @@ String requiredLessonCourseId(String url) {
     throw UnknownException('Missing course ID in lesson URL');
   }
   return id;
+}
+
+String _normalizeTeacherKey(String? value) =>
+    (value ?? '').trim().toLowerCase();
+
+void _applyTeacherConversationIds(
+  Iterable<LessonTeacher> targets,
+  Iterable<LessonTeacher> sources,
+) {
+  final knownSources = [
+    for (final source in sources)
+      if (source.conversationReceiverId != null &&
+          source.conversationReceiverId!.isNotEmpty)
+        (
+          krz: _normalizeTeacherKey(source.teacherKuerzel),
+          name: _normalizeTeacherKey(source.teacher),
+          id: source.conversationReceiverId!,
+        ),
+  ];
+  if (knownSources.isEmpty) return;
+
+  for (final target in targets) {
+    if (target.conversationReceiverId != null) continue;
+    final krz = _normalizeTeacherKey(target.teacherKuerzel);
+    final name = _normalizeTeacherKey(target.teacher);
+    if (krz.isEmpty && name.isEmpty) continue;
+
+    final exactPairIds = <String>{};
+    final compatibleIds = <String>{};
+
+    for (final source in knownSources) {
+      final krzMatches = krz.isNotEmpty && source.krz == krz;
+      final nameMatches = name.isNotEmpty && source.name == name;
+      if (!krzMatches && !nameMatches) continue;
+
+      final krzConflicts =
+          krz.isNotEmpty && source.krz.isNotEmpty && source.krz != krz;
+      final nameConflicts =
+          name.isNotEmpty && source.name.isNotEmpty && source.name != name;
+      if (krzConflicts || nameConflicts) continue;
+
+      if (krzMatches && nameMatches) {
+        exactPairIds.add(source.id);
+      }
+      compatibleIds.add(source.id);
+    }
+
+    if (exactPairIds.length == 1) {
+      target.conversationReceiverId = exactPairIds.single;
+    } else if (exactPairIds.isEmpty && compatibleIds.length == 1) {
+      target.conversationReceiverId = compatibleIds.single;
+    }
+  }
+}
+
+/// Propagates discovered teacher conversation receiver IDs across lessons in
+/// the same overview response without making extra network requests.
+void propagateLessonTeacherConversationIds(
+  Iterable<Lesson> lessons, {
+  Iterable<LessonTeacher> additionalSources = const [],
+}) {
+  final allTargets = [for (final lesson in lessons) ...lesson.teachers];
+  final allSources = [
+    ...additionalSources,
+    for (final teacher in allTargets)
+      if (teacher.conversationReceiverId != null) teacher,
+  ];
+  if (allSources.isEmpty) return;
+  _applyTeacherConversationIds(allTargets, allSources);
 }

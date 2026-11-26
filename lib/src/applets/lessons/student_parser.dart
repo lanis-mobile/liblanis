@@ -10,6 +10,7 @@ import '../../models/lessons.dart';
 import '../applet_context.dart';
 import '../applet_parser.dart';
 import '../definition.dart';
+import '../teacher_message_link.dart';
 import 'overview_parser.dart';
 
 class LessonsStudentParser extends AppletParser<Lessons> {
@@ -357,6 +358,9 @@ class LessonsStudentParser extends AppletParser<Lessons> {
                       ?.text
                       .trim(),
               teacherKuerzel: e.text.trim(),
+              conversationReceiverId: parseTeacherConversationReceiverId(
+                e.parent,
+              ),
             ),
           )
           .toList(),

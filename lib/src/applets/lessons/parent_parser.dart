@@ -59,17 +59,19 @@ class LessonsParentParser extends AppletParser<ParentLessonsOverview> {
     try {
       final pupils = _parsePupilsDocument(document);
       final boxes = document.querySelectorAll('.pupilbox');
-      return ParentLessonsOverview(
-        lessonsByPupil: {
-          for (var i = 0; i < pupils.length; i++)
-            pupils[i]: parseLessonsOverview(
-              boxes[i],
-              foldersId: 'mappen${pupils[i].id}',
-              attendanceId: 'anwesend${pupils[i].id}',
-              pupilId: pupils[i].id,
-            ),
-        },
+      final lessonsByPupil = {
+        for (var i = 0; i < pupils.length; i++)
+          pupils[i]: parseLessonsOverview(
+            boxes[i],
+            foldersId: 'mappen${pupils[i].id}',
+            attendanceId: 'anwesend${pupils[i].id}',
+            pupilId: pupils[i].id,
+          ),
+      };
+      propagateLessonTeacherConversationIds(
+        lessonsByPupil.values.expand((courses) => courses),
       );
+      return ParentLessonsOverview(lessonsByPupil: lessonsByPupil);
     } catch (error, stack) {
       if (error is LanisException) rethrow;
       Error.throwWithStackTrace(
