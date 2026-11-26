@@ -653,6 +653,158 @@ void main() {
       },
     );
   }
+
+  test(
+    'parses teacher conversationReceiverId in detail and propagates from #aktuell to #mappen and older courses',
+    () {
+      const detailHtml = '''
+<div id="content">
+  <h1 data-book="20">Informatik 1</h1>
+  <div class="btn-group">
+    <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Caputo, Alessio (CAP)">CAP</button>
+    <ul class="dropdown-menu">
+      <li><span>Caputo, Alessio</span></li>
+      <li role="separator" class="divider"></li>
+      <li><a title="Nachricht schreiben" href="nachrichten.php?to[]=bC0zMTY5ODM=}">Nachricht schreiben</a></li>
+    </ul>
+  </div>
+  <div id="history"><table><tbody></tbody></table></div>
+</div>
+''';
+      final detailed = LessonsStudentParser.parseDetailedDocument(
+        parse(detailHtml),
+        courseID: '20',
+      );
+      expect(detailed.teachers.single.teacherKuerzel, 'CAP');
+      expect(detailed.teachers.single.conversationReceiverId, 'l-316983');
+
+      const overviewHtml = '''
+<div id="content">
+  <div id="aktuell">
+    <table><tbody>
+      <tr class="printable" data-entry="500">
+        <td>
+          <h3><a href="meinunterricht.php?a=sus_view&amp;id=20">Informatik 1</a></h3>
+          <div class="btn-group">
+            <button type="button" class="btn btn-primary dropdown-toggle btn-xs" title="Caputo, Alessio (CAP)">CAP</button>
+            <ul class="dropdown-menu">
+              <li><span>Caputo, Alessio</span></li>
+              <li><a href="nachrichten.php?to[]=bC0zMTY5ODM=}">Nachricht schreiben</a></li>
+            </ul>
+          </div>
+          <span class="datum">12.11.2026</span>
+          <span class="thema">Topic</span>
+        </td>
+      </tr>
+    </tbody></table>
+  </div>
+  <div id="mappen">
+    <div class="row">
+      <div>
+        <h2>Informatik 1</h2>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Caputo, Alessio (CAP)">CAP</button>
+          <ul class="dropdown-menu">
+            <li><span>Caputo, Alessio</span></li>
+          </ul>
+        </div>
+        <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=20">Open</a>
+      </div>
+      <div>
+        <h2>Informatik 2</h2>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Caputo, Alessio (CAP)">CAP</button>
+          <ul class="dropdown-menu">
+            <li><span>Caputo, Alessio</span></li>
+          </ul>
+        </div>
+        <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=21">Open</a>
+      </div>
+    </div>
+    <table><tbody>
+      <tr data-book="20">
+        <td><a href="meinunterricht.php?a=sus_view&amp;id=20&amp;halb=1">Informatik 1 (alt)</a></td>
+        <td><span class="label" title="Caputo, Alessio (CAP)">CAP</span></td>
+      </tr>
+    </tbody></table>
+  </div>
+</div>
+''';
+      final lessons = LessonsStudentParser.parseOverviewDocument(
+        parse(overviewHtml),
+      );
+      expect(lessons, hasLength(3));
+      for (final lesson in lessons) {
+        expect(
+          lesson.teachers.single.conversationReceiverId,
+          'l-316983',
+          reason: 'lesson ${lesson.name} (isOlder=${lesson.isOlder})',
+        );
+      }
+    },
+  );
+
+  test(
+    'teacher ID propagation does not leak across colliding kuerzel or names',
+    () {
+      const overviewHtml = '''
+<div id="content">
+  <div id="aktuell">
+    <table><tbody>
+      <tr class="printable" data-entry="600">
+        <td>
+          <h3><a href="meinunterricht.php?a=sus_view&amp;id=30">Mathe</a></h3>
+          <div class="btn-group">
+            <button type="button" class="btn btn-primary dropdown-toggle btn-xs" title="Müller, Anna (MUE)">MUE</button>
+            <ul class="dropdown-menu">
+              <li><a href="nachrichten.php?to[]=bC0xMDUwNDQ=}">Nachricht schreiben</a></li>
+            </ul>
+          </div>
+          <span class="datum">12.11.2026</span>
+          <span class="thema">Topic</span>
+        </td>
+      </tr>
+    </tbody></table>
+  </div>
+  <div id="mappen">
+    <div class="row">
+      <div>
+        <h2>Mathe</h2>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Müller, Anna (MUE)">MUE</button>
+          <ul class="dropdown-menu"><li><span>Müller, Anna</span></li></ul>
+        </div>
+        <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=30">Open</a>
+      </div>
+      <div>
+        <h2>Physik</h2>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Müller, Peter (MUE)">MUE</button>
+          <ul class="dropdown-menu"><li><span>Müller, Peter</span></li></ul>
+        </div>
+        <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=31">Open</a>
+      </div>
+      <div>
+        <h2>Chemie</h2>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Müller, Anna (MUA)">MUA</button>
+          <ul class="dropdown-menu"><li><span>Müller, Anna</span></li></ul>
+        </div>
+        <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=32">Open</a>
+      </div>
+    </div>
+  </div>
+</div>
+''';
+      final lessons = LessonsStudentParser.parseOverviewDocument(
+        parse(overviewHtml),
+      );
+      final byId = {for (final l in lessons) l.courseID: l};
+      expect(byId['30']!.teachers.single.conversationReceiverId, 'l-105044');
+      expect(byId['31']!.teachers.single.conversationReceiverId, isNull);
+      expect(byId['32']!.teachers.single.conversationReceiverId, isNull);
+    },
+  );
 }
 
 const courseName = 'Informatik 1 (fuzzTest-Gym)';

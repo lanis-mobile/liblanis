@@ -33,12 +33,14 @@ class StudentStudyGroupTeacher {
   final String firstName;
   final String lastName;
   final String? email;
+  final String? conversationReceiverId;
 
   StudentStudyGroupTeacher({
     required this.krz,
     required this.firstName,
     required this.lastName,
     this.email,
+    this.conversationReceiverId,
   });
 }
 
