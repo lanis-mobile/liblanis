@@ -1,3 +1,7 @@
+## 0.3.5
+
+* Extend `DataStorageParser` (`getNodeDetails`, `getRootDetails`, `parseNodeHtml`) and data storage models (`DataStorageNode`, `FolderBreadcrumb`, `FolderNode`, `FileNode`) to parse folder breadcrumbs, "Neue Dateien", folder colors/counts/write flags, and file extensions/timestamps/byte sizes while keeping `getNode` and `getRoot` backwards-compatible.
+
 ## 0.3.4
 * Adds support for the SPH `dateiverteilung.php` (Dateiverteilung) applet across `student`, `teacher`, and `parent` accounts, including typed offline caching for the overview and optional Tooladmin management endpoints.
 
