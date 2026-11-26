@@ -308,14 +308,15 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
         'Teacher timetable URL must stay on ${_base.origin}/stundenplan.php',
       );
     }
-    if (url.queryParameters.containsKey('pdf')) {
+    final params = _safeQueryParameters(url);
+    if (params.containsKey('pdf')) {
       throw ConfigurationException(
         'Teacher timetable URL must not request PDF output',
       );
     }
     if (category != null) {
       final expected = _expectedAction(category);
-      final actual = url.queryParameters['a'];
+      final actual = params['a'];
       if (actual != expected) {
         throw ConfigurationException(
           'Teacher timetable URL action "$actual" does not match $category (expected "$expected")',
@@ -333,10 +334,30 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     return _base.resolveUri(parsed);
   }
 
+  static Map<String, String> _safeQueryParameters(Uri uri) {
+    try {
+      return uri.queryParameters;
+    } on FormatException {
+      final result = <String, String>{};
+      for (final part in uri.query.split('&')) {
+        if (part.isEmpty) continue;
+        final eq = part.indexOf('=');
+        if (eq < 0) {
+          result[_safeDecode(part)] = '';
+        } else {
+          result[_safeDecode(part.substring(0, eq))] = _safeDecode(
+            part.substring(eq + 1),
+          );
+        }
+      }
+      return result;
+    }
+  }
+
   static Iterable<Element> _linksWithAction(Element root, String action) sync* {
     for (final a in root.querySelectorAll('a[href]')) {
       final resolved = _tryResolve(a.attributes['href']);
-      if (resolved != null && resolved.queryParameters['a'] == action) {
+      if (resolved != null && _safeQueryParameters(resolved)['a'] == action) {
         yield a;
       }
     }
@@ -363,7 +384,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       final resolved = _tryResolve(a.attributes['href']);
       if (resolved != null &&
           resolved.path == '/stundenplan.php' &&
-          resolved.queryParameters['a'] == 'detail') {
+          _safeQueryParameters(resolved)['a'] == 'detail') {
         ownUrl = resolved;
         break;
       }
@@ -399,12 +420,13 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       for (final link in panel.querySelectorAll('a.list-group-item[href]')) {
         final resolved = _tryResolve(link.attributes['href']);
         if (resolved == null) continue;
-        final action = resolved.queryParameters['a'];
+        final params = _safeQueryParameters(resolved);
+        final action = params['a'];
         final label = _cleanText(link.text);
 
         switch (action) {
           case 'detail':
-            final id = resolved.queryParameters['t'] ?? '';
+            final id = params['t'] ?? '';
             if (id.isNotEmpty) {
               teachers.add(
                 TeacherTimetableReference(
@@ -416,7 +438,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
               );
             }
           case 'detail_klasse':
-            final id = resolved.queryParameters['k'] ?? '';
+            final id = params['k'] ?? '';
             if (id.isNotEmpty) {
               classes.add(
                 TeacherTimetableReference(
@@ -428,7 +450,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
               );
             }
           case 'detail_raum':
-            final id = resolved.queryParameters['r'] ?? '';
+            final id = params['r'] ?? '';
             if (id.isNotEmpty) {
               rooms.add(
                 TeacherTimetableReference(
@@ -440,7 +462,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
               );
             }
           case 'detail_pause':
-            final id = resolved.queryParameters['p'] ?? '';
+            final id = params['p'] ?? '';
             if (id.isNotEmpty) {
               breakSupervisions.add(
                 TeacherTimetableReference(
@@ -512,9 +534,9 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     Uri? rumbsUrl;
     for (final a in content.querySelectorAll('a[href*="raeumeundmedien.php"]')) {
       if (_hasAncestor(a, (el) => el.classes.contains('plan'))) continue;
-      final href = a.attributes['href']?.trim();
-      if (href != null && href.isNotEmpty) {
-        rumbsUrl = _base.resolve(href);
+      final resolved = _tryResolve(a.attributes['href']);
+      if (resolved != null) {
+        rumbsUrl = resolved;
         break;
       }
     }
@@ -637,10 +659,10 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     final rooms = <TeacherTimetableReference>[];
     for (final link in content.querySelectorAll('ul li a[href]')) {
       final resolved = _tryResolve(link.attributes['href']);
-      if (resolved == null || resolved.queryParameters['a'] != 'detail_raum') {
-        continue;
-      }
-      final id = resolved.queryParameters['r'] ?? _cleanText(link.text);
+      if (resolved == null) continue;
+      final params = _safeQueryParameters(resolved);
+      if (params['a'] != 'detail_raum') continue;
+      final id = params['r'] ?? _cleanText(link.text);
       if (id.isEmpty) continue;
       rooms.add(
         TeacherTimetableReference(
@@ -1058,24 +1080,20 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     if (rumbsLink != null ||
         labelTitle.toLowerCase().contains('räume und medien')) {
       kind = TeacherTimetableEntryKind.roomBooking;
-      final href = rumbsLink?.attributes['href']?.trim();
-      if (href != null && href.isNotEmpty) externalUrl = _base.resolve(href);
+      externalUrl = _tryResolve(rumbsLink?.attributes['href']);
     } else if (vplanLink != null ||
         labelTitle.toLowerCase().contains('vertretungsplan')) {
       kind = (labelEl?.classes.contains('label-danger') ?? false)
           ? TeacherTimetableEntryKind.substitutionChanged
           : TeacherTimetableEntryKind.substitutionAdded;
-      final href = vplanLink?.attributes['href']?.trim();
-      if (href != null && href.isNotEmpty) externalUrl = _base.resolve(href);
+      externalUrl = _tryResolve(vplanLink?.attributes['href']);
     } else {
       kind = TeacherTimetableEntryKind.regular;
     }
 
-    final subCreateHref = subCreateLink?.attributes['href']?.trim();
-    final substitutionCreateUrl =
-        (subCreateHref != null && subCreateHref.isNotEmpty)
-        ? _base.resolve(subCreateHref)
-        : null;
+    final substitutionCreateUrl = _tryResolve(
+      subCreateLink?.attributes['href'],
+    );
 
     // Subject: first <b> outside <small> (note: on detail_raum, <small> also has a <b> for teacher).
     String? subject;
@@ -1293,6 +1311,8 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
   static String _safeDecode(String raw) {
     try {
       return Uri.decodeQueryComponent(raw);
+    } on FormatException {
+      return raw;
     } on ArgumentError {
       return raw;
     }

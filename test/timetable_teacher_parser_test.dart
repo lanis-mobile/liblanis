@@ -613,5 +613,61 @@ void main() {
       expect(entry.badge, 'B');
       expect(entry.duration, 1);
     });
+
+    test('handles invalid UTF-8/Latin-1 percent-encoding and malformed hrefs without throwing FormatException', () {
+      final overview = TimetableTeacherParser.parseOverviewHtml('''
+        <div id="content">
+          <a class="btn" href="stundenplan.php?a=detail&x=%E0%A4%A">Own</a>
+          <div id="accordion">
+            <div class="panel">
+              <div class="panel-title">Lehrkräfte</div>
+              <a class="list-group-item" href="stundenplan.php?a=detail&t=M%FCller">Müller</a>
+            </div>
+          </div>
+        </div>
+      ''');
+      expect(overview.ownTimetableUrl, isNotNull);
+      expect(overview.teachers, hasLength(1));
+
+      final plan = TimetableTeacherParser.parsePlanHtml(
+        '''
+        <div id="content">
+          <h1>R</h1>
+          <a href="http://[::1/raeumeundmedien.php">R</a>
+          <select class="select2-class"><option value="%C0%AF" selected>X</option></select>
+          <div class="plan">
+            <table>
+              <thead><tr><th>Stunde</th><th>Montag</th></tr></thead>
+              <tbody>
+                <tr><td></td><td></td></tr>
+                <tr>
+                  <td><b>1</b></td>
+                  <td>
+                    <div class="stunde">
+                      <b>Mathe</b>
+                      <a href="http://[::1/vertretungsplan.php">V</a>
+                      <a href="http://[::1/meinunterricht.php?a=vertretung">C</a>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        ''',
+        category: TeacherTimetableCategory.room,
+      );
+      expect(plan.rumbsUrl, isNull);
+      expect(plan.days[0].single.externalUrl, isNull);
+      expect(plan.days[0].single.substitutionCreateUrl, isNull);
+
+      final free = TimetableTeacherParser.parseFreeRoomsHtml('''
+        <div id="content">
+          <select id="tag"><option value="1" selected>Mo</option></select>
+          <ul><li><a href="stundenplan.php?a=detail_raum&r=R%FC">R</a></li></ul>
+        </div>
+      ''');
+      expect(free.rooms, hasLength(1));
+    });
   });
 }
