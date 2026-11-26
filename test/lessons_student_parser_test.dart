@@ -805,6 +805,209 @@ void main() {
       expect(byId['32']!.teachers.single.conversationReceiverId, isNull);
     },
   );
+
+  test(
+    'parses teacher email in detail and propagates email alongside conversationReceiverId across overview',
+    () {
+      const detailHtml = '''
+<div id="content">
+  <h1 data-book="20">Informatik 1</h1>
+  <div class="btn-group">
+    <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Caputo, Alessio (CAP)">CAP</button>
+    <ul class="dropdown-menu">
+      <li><span>Caputo, Alessio</span></li>
+      <li role="separator" class="divider"></li>
+      <li><a title="Nachricht schreiben" href="nachrichten.php?to[]=bC0zMTY5ODM=}">Nachricht schreiben</a></li>
+      <li><a href="MAILTO:alessio.caputo@example.invalid?subject=Informatik">E-Mail senden</a></li>
+    </ul>
+  </div>
+  <div class="btn-group">
+    <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Weber, Anna (WEB)">WEB</button>
+    <ul class="dropdown-menu">
+      <li><span>Weber, Anna</span></li>
+      <li><a href="mailto:anna.weber%40example.invalid">E-Mail senden</a></li>
+    </ul>
+  </div>
+  <div class="btn-group">
+    <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Klein, Tom (KLE)">KLE</button>
+    <ul class="dropdown-menu">
+      <li><span>Klein, Tom</span></li>
+      <li><a href="mailto:?subject=Empty">E-Mail senden</a></li>
+      <li><a href="mailto:not-an-email">Invalid</a></li>
+    </ul>
+  </div>
+  <div id="history"><table><tbody></tbody></table></div>
+</div>
+''';
+      final detailed = LessonsStudentParser.parseDetailedDocument(
+        parse(detailHtml),
+        courseID: '20',
+      );
+      expect(detailed.teachers, hasLength(3));
+      expect(detailed.teachers[0].teacherKuerzel, 'CAP');
+      expect(detailed.teachers[0].conversationReceiverId, 'l-316983');
+      expect(detailed.teachers[0].email, 'alessio.caputo@example.invalid');
+      expect(detailed.teachers[1].teacherKuerzel, 'WEB');
+      expect(detailed.teachers[1].conversationReceiverId, isNull);
+      expect(detailed.teachers[1].email, 'anna.weber@example.invalid');
+      expect(detailed.teachers[2].teacherKuerzel, 'KLE');
+      expect(detailed.teachers[2].conversationReceiverId, isNull);
+      expect(detailed.teachers[2].email, isNull);
+
+      // Overview: #aktuell has conversationReceiverId for CAP and email-only for WEB,
+      // while #mappen has email for CAP on course 20 and neither on course 21 / older row.
+      const overviewHtml = '''
+<div id="content">
+  <div id="aktuell">
+    <table><tbody>
+      <tr class="printable" data-entry="500">
+        <td>
+          <h3><a href="meinunterricht.php?a=sus_view&amp;id=20">Informatik 1</a></h3>
+          <div class="btn-group">
+            <button type="button" class="btn btn-primary dropdown-toggle btn-xs" title="Caputo, Alessio (CAP)">CAP</button>
+            <ul class="dropdown-menu">
+              <li><span>Caputo, Alessio</span></li>
+              <li><a href="nachrichten.php?to[]=bC0zMTY5ODM=}">Nachricht schreiben</a></li>
+            </ul>
+          </div>
+          <div class="btn-group">
+            <button type="button" class="btn btn-primary dropdown-toggle btn-xs" title="Weber, Anna (WEB)">WEB</button>
+            <ul class="dropdown-menu">
+              <li><span>Weber, Anna</span></li>
+              <li><a href="mailto:anna.weber@example.invalid?subject=Hi">E-Mail senden</a></li>
+            </ul>
+          </div>
+          <span class="datum">12.11.2026</span>
+          <span class="thema">Topic</span>
+        </td>
+      </tr>
+    </tbody></table>
+  </div>
+  <div id="mappen">
+    <div class="row">
+      <div>
+        <h2>Informatik 1</h2>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Caputo, Alessio (CAP)">CAP</button>
+          <ul class="dropdown-menu">
+            <li><span>Caputo, Alessio</span></li>
+            <li><a href="mailto:alessio.caputo@example.invalid">E-Mail senden</a></li>
+          </ul>
+        </div>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Weber, Anna (WEB)">WEB</button>
+          <ul class="dropdown-menu">
+            <li><span>Weber, Anna</span></li>
+          </ul>
+        </div>
+        <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=20">Open</a>
+      </div>
+      <div>
+        <h2>Informatik 2</h2>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Caputo, Alessio (CAP)">CAP</button>
+          <ul class="dropdown-menu"><li><span>Caputo, Alessio</span></li></ul>
+        </div>
+        <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=21">Open</a>
+      </div>
+    </div>
+    <table><tbody>
+      <tr data-book="20">
+        <td><a href="meinunterricht.php?a=sus_view&amp;id=20&amp;halb=1">Informatik 1 (alt)</a></td>
+        <td>
+          <span class="label" title="Caputo, Alessio (CAP)">CAP</span>
+          <span class="label" title="Weber, Anna (WEB)">WEB</span>
+        </td>
+      </tr>
+    </tbody></table>
+  </div>
+</div>
+''';
+      final lessons = LessonsStudentParser.parseOverviewDocument(
+        parse(overviewHtml),
+      );
+      expect(lessons, hasLength(3));
+      final byName = {for (final l in lessons) l.name: l};
+
+      for (final name in ['Informatik 1', 'Informatik 2', 'Informatik 1 (alt)']) {
+        final cap = byName[name]!.teachers.singleWhere(
+          (t) => t.teacherKuerzel == 'CAP',
+        );
+        expect(cap.conversationReceiverId, 'l-316983', reason: name);
+        expect(cap.email, 'alessio.caputo@example.invalid', reason: name);
+      }
+
+      for (final name in ['Informatik 1', 'Informatik 1 (alt)']) {
+        final web = byName[name]!.teachers.singleWhere(
+          (t) => t.teacherKuerzel == 'WEB',
+        );
+        expect(web.conversationReceiverId, isNull, reason: name);
+        expect(web.email, 'anna.weber@example.invalid', reason: name);
+      }
+    },
+  );
+
+  test(
+    'teacher email propagation does not leak across colliding kuerzel or names',
+    () {
+      const overviewHtml = '''
+<div id="content">
+  <div id="aktuell">
+    <table><tbody>
+      <tr class="printable" data-entry="601">
+        <td>
+          <h3><a href="meinunterricht.php?a=sus_view&amp;id=30">Mathe</a></h3>
+          <div class="btn-group">
+            <button type="button" class="btn btn-primary dropdown-toggle btn-xs" title="Müller, Anna (MUE)">MUE</button>
+            <ul class="dropdown-menu">
+              <li><a href="mailto:anna.mueller@example.invalid">E-Mail senden</a></li>
+            </ul>
+          </div>
+          <span class="datum">12.11.2026</span>
+          <span class="thema">Topic</span>
+        </td>
+      </tr>
+    </tbody></table>
+  </div>
+  <div id="mappen">
+    <div class="row">
+      <div>
+        <h2>Mathe</h2>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Müller, Anna (MUE)">MUE</button>
+          <ul class="dropdown-menu"><li><span>Müller, Anna</span></li></ul>
+        </div>
+        <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=30">Open</a>
+      </div>
+      <div>
+        <h2>Physik</h2>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Müller, Peter (MUE)">MUE</button>
+          <ul class="dropdown-menu"><li><span>Müller, Peter</span></li></ul>
+        </div>
+        <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=31">Open</a>
+      </div>
+      <div>
+        <h2>Chemie</h2>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle btn-md" title="Müller, Anna (MUA)">MUA</button>
+          <ul class="dropdown-menu"><li><span>Müller, Anna</span></li></ul>
+        </div>
+        <a class="btn btn-primary" href="meinunterricht.php?a=sus_view&amp;id=32">Open</a>
+      </div>
+    </div>
+  </div>
+</div>
+''';
+      final lessons = LessonsStudentParser.parseOverviewDocument(
+        parse(overviewHtml),
+      );
+      final byId = {for (final l in lessons) l.courseID: l};
+      expect(byId['30']!.teachers.single.email, 'anna.mueller@example.invalid');
+      expect(byId['31']!.teachers.single.email, isNull);
+      expect(byId['32']!.teachers.single.email, isNull);
+    },
+  );
 }
 
 const courseName = 'Informatik 1 (fuzzTest-Gym)';

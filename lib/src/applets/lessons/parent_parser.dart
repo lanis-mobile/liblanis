@@ -68,7 +68,7 @@ class LessonsParentParser extends AppletParser<ParentLessonsOverview> {
             pupilId: pupils[i].id,
           ),
       };
-      propagateLessonTeacherConversationIds(
+      propagateLessonTeacherContactInfo(
         lessonsByPupil.values.expand((courses) => courses),
       );
       return ParentLessonsOverview(lessonsByPupil: lessonsByPupil);

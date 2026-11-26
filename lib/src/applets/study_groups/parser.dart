@@ -42,21 +42,6 @@ class StudyGroupsStudentParser extends AppletParser<StudentStudyGroups> {
     return parsed;
   }
 
-  static String? _parseTeacherEmail(Element teacherGroup) {
-    final href = teacherGroup
-        .querySelector('ul.dropdown-menu a[href^="mailto:"]')
-        ?.attributes['href']
-        ?.trim();
-    if (href == null || href.length <= 'mailto:'.length) return null;
-    var address = href.substring('mailto:'.length);
-    final queryStart = address.indexOf('?');
-    if (queryStart != -1) {
-      address = address.substring(0, queryStart);
-    }
-    address = address.trim();
-    return address.isEmpty ? null : address;
-  }
-
   static String _stripOuterParens(String value) {
     if (value.length >= 2 && value.startsWith('(') && value.endsWith(')')) {
       return value.substring(1, value.length - 1).trim();
@@ -165,7 +150,7 @@ class StudyGroupsStudentParser extends AppletParser<StudentStudyGroups> {
                         ?.text
                         .trim() ??
                     '',
-                email: _parseTeacherEmail(teacherGroup),
+                email: parseTeacherEmail(teacherGroup),
                 conversationReceiverId: parseTeacherConversationReceiverId(
                   teacherGroup,
                 ),

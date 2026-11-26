@@ -1,7 +1,7 @@
 name: liblanis
 description: Build apps and scripts against SPH without Flutter - batteries included.
 
-version: 0.3.5
+version: 0.3.6
 
 homepage: https://github.com/lanis-mobile/liblanis
 repository: https://github.com/lanis-mobile/liblanis
