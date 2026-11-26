@@ -10,16 +10,16 @@ Session stack, multi-account storage, optional `sqlite3` persistence, injectable
 
 | Applet | Student | Teacher | Parent | Offline Cache |
 | :--- | :---: | :---: | :---: | :---: |
-| **Vertretungsplan** (`vertretungsplan.php`) | 👁️ | 👁️ | 👁️ | ✅ |
-| **Stundenplan** (`stundenplan.php`) | 👁️ | ❌ | 👁️ | ✅ |
-| **Mein Unterricht** (`meinunterricht.php`) | ✏️ | ✏️ ⚠️ | 👁️ | ❌ |
-| **Nachrichten** (`nachrichten.php`) | ✏️ | ✏️ | ✏️ | ❌ |
-| **Kalender** (`kalender.php`) | 👁️ | 👁️ | 👁️ | ❌ |
-| **Dateispeicher** (`dateispeicher.php`) | 👁️ | 👁️ | 👁️ | ❌ |
-| **Dateiverteilung** (`dateiverteilung.php`) | 👁️ | ✏️ | 👁️ | ✅ |
-| **Lerngruppen** (`lerngruppen.php`) | 👁️ | ❌ | ❌ | ❌ |
+| **Vertretungsplan** (`vertretungsplan.php`) | Read | Read | Read | Yes |
+| **Stundenplan** (`stundenplan.php`) | Read | — | Read | Yes |
+| **Mein Unterricht** (`meinunterricht.php`) | Read/Write | Legacy* | Read | — |
+| **Nachrichten** (`nachrichten.php`) | Read/Write | Read/Write | Read/Write | — |
+| **Kalender** (`kalender.php`) | Read | Read | Read | — |
+| **Dateispeicher** (`dateispeicher.php`) | Read | Read | Read | — |
+| **Dateiverteilung** (`dateiverteilung.php`) | Read | Read/Write | Read | Yes |
+| **Lerngruppen** (`lerngruppen.php`) | Read | — | — | — |
 
-**Legend:** ✏️ Read & Write · 👁️ Read-only · ⚠️ Outdated / not recommended · ✅ Supported · ❌ Not supported
+*\*Outdated / not recommended (Read/Write)*
 
 ## Features
 
