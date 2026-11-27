@@ -7,11 +7,13 @@ import 'package:uuid/uuid.dart';
 import '../../exceptions.dart';
 import '../../models/time_of_day.dart';
 import '../../models/timetable.dart';
+import '../../models/timetable_url.dart';
 import '../applet_context.dart';
 import '../applet_parser.dart';
 import '../definition.dart';
 import '../../cache/annotation.dart';
 import '../../cache/types.dart';
+import 'version_parser.dart';
 
 part 'parser.g.dart';
 
@@ -43,11 +45,61 @@ class TimetableStudentParser extends AppletParser<TimeTable>
   @Cacheable(operation: 'timetable.student.home', applet: Applets.timetable)
   Future<TimeTable> _getHome() => getHome();
 
+  @Cacheable(operation: 'timetable.student.version', applet: Applets.timetable)
+  Future<TimeTable> _getTimetableForDate(String date) {
+    final trimmed = date.trim();
+    if (trimmed.isEmpty || trimmed != date) {
+      throw ArgumentError.value(
+        date,
+        'date',
+        'Must be non-empty and trimmed for cache key consistency',
+      );
+    }
+    return getTimetableForDate(trimmed);
+  }
+
+  /// Cached entry point for a specific timetable version that normalizes
+  /// [date] before constructing the cache key.
+  Future<MaybeCacheResult<TimeTable>> loadCachedTimetableForDate(
+    String date, {
+    CacheReadPolicy? policy,
+  }) {
+    final trimmed = date.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError.value(date, 'date', 'Must not be empty');
+    }
+    return cached.getTimetableForDate(trimmed, cachePolicy: policy);
+  }
+
   @override
   Future<TimeTable> getHome() async {
     final Document? document = await getTimetableDocument();
     if (document == null) throw NetworkException();
     return parseDocument(document);
+  }
+
+  /// Load a specific timetable version (`stundenplan.php?date=<date>`).
+  ///
+  /// Throws [UnknownException] if the portal returns a page without any
+  /// timetable table or with conflicting date metadata, so the wrong version
+  /// is never cached under [date].
+  Future<TimeTable> getTimetableForDate(String date) async {
+    final trimmed = date.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError.value(date, 'date', 'Must not be empty');
+    }
+    final Document? document = await getTimetableDocument(date: trimmed);
+    if (document == null) throw NetworkException();
+    if (document.querySelector('#all tbody, #own tbody') == null) {
+      throw UnknownException('Missing student timetable table');
+    }
+    final table = parseDocument(document);
+    if (table.planDate != null && table.planDate != trimmed) {
+      throw UnknownException(
+        'Requested timetable date "$trimmed", but portal returned "${table.planDate}"',
+      );
+    }
+    return table;
   }
 
   /// Offline/fixture entry point used by tests and [getHome].
@@ -64,14 +116,55 @@ class TimetableStudentParser extends AppletParser<TimeTable>
         .querySelector('#aktuelleWoche')
         ?.text
         .trim();
+    final candidateRoots = <Element>[
+      ?document.querySelector('#all .plan'),
+      ?document.querySelector('#own .plan'),
+      ?document.querySelector('.plan'),
+    ];
+    final planRoot = candidateRoots.isEmpty ? null : candidateRoots.first;
+    String? rawPlanDate;
+    for (final root in candidateRoots) {
+      final candidate = root.attributes['data-date']?.trim();
+      if (candidate != null && candidate.isNotEmpty) {
+        rawPlanDate = candidate;
+        break;
+      }
+    }
+    Element? pickerRoot;
+    for (final root in candidateRoots) {
+      if (root.querySelector('select.date-select') != null) {
+        pickerRoot = root;
+        break;
+      }
+    }
+    final availableVersions = TimetableVersionHelper.parseVersions(
+      pickerRoot ?? planRoot,
+      planDate: rawPlanDate,
+    );
+    var planDate = rawPlanDate;
+    if (planDate == null) {
+      for (final v in availableVersions) {
+        if (v.isSelected) {
+          planDate = v.date;
+          break;
+        }
+      }
+    }
+    final validFromLabel = TimetableVersionHelper.extractValidFrom(
+      planRoot,
+      versions: availableVersions,
+    );
 
     // Missing full plan table: return empty rather than crashing (LANIS-MOBILE-I).
     if (tbodyAll == null) {
       return TimeTable(
         planForAll: const [],
         planForOwn: tbodyOwn == null ? null : parseRoomPlan(tbodyOwn),
-        hours: const [],
+        hours: tbodyOwn == null ? const [] : parseRows(tbodyOwn),
         weekBadge: weekBadge,
+        planDate: planDate,
+        validFromLabel: validFromLabel,
+        availableVersions: availableVersions,
       );
     }
 
@@ -80,6 +173,9 @@ class TimetableStudentParser extends AppletParser<TimeTable>
       planForOwn: tbodyOwn == null ? null : parseRoomPlan(tbodyOwn),
       hours: parseRows(tbodyAll),
       weekBadge: weekBadge,
+      planDate: planDate,
+      validFromLabel: validFromLabel,
+      availableVersions: availableVersions,
     );
   }
 
@@ -88,17 +184,21 @@ class TimetableStudentParser extends AppletParser<TimeTable>
     return TimeTable.fromJson(jsonDecode(json));
   }
 
-  Future<Document?> getTimetableDocument() async {
+  Future<Document?> getTimetableDocument({String? date}) async {
     // On the website, the user is redirected every time, if they do not have the query parameter set.
     // However, the data is still loaded correctly without redirection, so we avoid it here to save traffic.
+    final trimmedDate = date?.trim();
+    final hasDate = trimmedDate != null && trimmedDate.isNotEmpty;
+    final requestUri = hasDate
+        ? _base.replace(queryParameters: {'date': trimmedDate})
+        : _base;
 
-    final response1 = await ctx.session.dio.get(
-      'https://start.schulportal.hessen.de/stundenplan.php',
-    );
+    final response1 = await ctx.session.dio.getUri(requestUri);
 
     if (response1.data.toString().trim().isNotEmpty) {
       final document = parse(response1.data);
-      if (document.getElementById('all') != null) {
+      final hasTable = document.querySelector('#all tbody, #own tbody') != null;
+      if (hasTable || (!hasDate && document.getElementById('all') != null)) {
         return document;
       }
     }
@@ -109,7 +209,7 @@ class TimetableStudentParser extends AppletParser<TimeTable>
     }
 
     final baseUri = response1.realUri.hasScheme ? response1.realUri : _base;
-    final Uri redirectUri;
+    Uri redirectUri;
     try {
       redirectUri = baseUri.resolve(location);
     } on FormatException {
@@ -123,6 +223,31 @@ class TimetableStudentParser extends AppletParser<TimeTable>
       throw ConfigurationException(
         'Timetable redirect must stay on ${_base.origin}',
       );
+    }
+    final lowerPath = redirectUri.path.toLowerCase();
+    if (lowerPath.contains('login') || lowerPath.endsWith('/index.php')) {
+      throw UnauthorizedException(
+        'Timetable redirect to login page: ${redirectUri.path}',
+      );
+    }
+    if (redirectUri.path != _base.path) {
+      throw ConfigurationException(
+        'Timetable redirect must stay on ${_base.path}',
+      );
+    }
+    if (hasDate) {
+      final redirectDate = TimetableUrlHelper.readDateParam(redirectUri);
+      if (redirectDate != null && redirectDate != trimmedDate) {
+        throw UnknownException(
+          'Timetable redirect targeted date "$redirectDate" instead of "$trimmedDate"',
+        );
+      }
+      if (redirectDate == null) {
+        redirectUri = TimetableUrlHelper.withDateParam(
+          redirectUri,
+          trimmedDate,
+        );
+      }
     }
 
     final response2 = await ctx.session.dio.getUri(redirectUri);

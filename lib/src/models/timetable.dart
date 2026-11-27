@@ -2,6 +2,52 @@ import 'time_of_day.dart';
 
 enum TimetableWeekParity { even, odd }
 
+/// A selectable timetable version (validity period or weekly view) offered by
+/// `stundenplan.php` via `select.date-select`.
+class TimetableVersion {
+  /// The `date` query parameter value sent to `stundenplan.php` (e.g. `2026-11-23`).
+  final String date;
+
+  /// Human-readable label shown by the portal (e.g. `"ab 23.11.2026 (bis 10.12.2026)"`).
+  final String label;
+
+  /// Whether this version is the currently selected one in the rendered page.
+  final bool isSelected;
+
+  const TimetableVersion({
+    required this.date,
+    required this.label,
+    this.isSelected = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'date': date,
+    'label': label,
+    'isSelected': isSelected,
+  };
+
+  factory TimetableVersion.fromJson(Map<String, dynamic> json) =>
+      TimetableVersion(
+        date: json['date'] as String,
+        label: json['label'] as String,
+        isSelected: json['isSelected'] as bool? ?? false,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      other is TimetableVersion &&
+      date == other.date &&
+      label == other.label &&
+      isSelected == other.isSelected;
+
+  @override
+  int get hashCode => Object.hash(date, label, isSelected);
+
+  @override
+  String toString() =>
+      'TimetableVersion(date: $date, label: $label, isSelected: $isSelected)';
+}
+
 class TimetableSubject {
   // The ID is not nullable, to support legacy data where the ID was not present
   String? id;
@@ -118,10 +164,40 @@ class TimeTable {
   List<TimetableDay>? planForOwn;
   List<TimeTableRow>? hours;
   String? weekBadge;
+  String? planDate;
+  String? validFromLabel;
+  List<TimetableVersion> availableVersions;
 
-  TimeTable({this.planForAll, this.planForOwn, this.weekBadge, this.hours});
+  TimeTable({
+    this.planForAll,
+    this.planForOwn,
+    this.weekBadge,
+    this.hours,
+    this.planDate,
+    this.validFromLabel,
+    List<TimetableVersion> availableVersions = const [],
+  }) : availableVersions = List.unmodifiable(availableVersions);
 
-  TimeTable.fromJson(Map<String, dynamic> json) {
+  bool get hasMultipleVersions => availableVersions.length > 1;
+
+  TimetableVersion? get selectedVersion {
+    for (final v in availableVersions) {
+      if (v.isSelected) return v;
+    }
+    if (planDate != null && planDate!.isNotEmpty) {
+      for (final v in availableVersions) {
+        if (v.date == planDate) return v;
+      }
+    }
+    return null;
+  }
+
+  TimeTable.fromJson(Map<String, dynamic> json)
+    : availableVersions = List.unmodifiable(
+        (json['availableVersions'] as List? ?? const []).map(
+          (v) => TimetableVersion.fromJson(v as Map<String, dynamic>),
+        ),
+      ) {
     planForAll = (json['planForAll'] as List?)
         ?.map(
           (day) => (day as List)
@@ -146,6 +222,8 @@ class TimeTable {
         ?.map((hour) => TimeTableRow.fromJson(hour as Map<String, dynamic>))
         .toList();
     weekBadge = json['weekBadge'];
+    planDate = json['planDate'] as String?;
+    validFromLabel = json['validFromLabel'] as String?;
   }
 
   Map<String, dynamic> toJson() {
@@ -158,6 +236,13 @@ class TimeTable {
         .toList();
     data['hours'] = hours?.map((hour) => hour.toJson()).toList();
     data['weekBadge'] = weekBadge;
+    if (planDate != null) data['planDate'] = planDate;
+    if (validFromLabel != null) data['validFromLabel'] = validFromLabel;
+    if (availableVersions.isNotEmpty) {
+      data['availableVersions'] = availableVersions
+          .map((v) => v.toJson())
+          .toList();
+    }
     return data;
   }
 }

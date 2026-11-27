@@ -550,4 +550,208 @@ void main() {
       hasLength(2),
     );
   });
+
+  group('multi-version support for student & parent timetables', () {
+    const multiVersionStudentHtml = '''
+      <div id="content">
+        <div class="tab-content">
+          <div id="all" class="tab-pane active">
+            <div class="plan" data-date="2026-11-23">
+              <div class="row alert alert-warning">
+                <select class="form-control date-select">
+                  <option value="2026-12-11">ab 11.12.2026</option>
+                  <option value="2026-11-23" selected="selected">ab 23.11.2026 (bis 10.12.2026)</option>
+                </select>
+              </div>
+              <span class="print-show">Stundenplan gültig ab 23.11.2026 (bis 10.12.2026)</span>
+              <table><tbody>
+                <tr><td></td><td></td></tr>
+                <tr>
+                  <td><span class="print-show"><b>1</b><span class="VonBis">08:00 - 08:45</span></span></td>
+                  <td><div class="stunde"><b>Mathe</b> R101 <small>CAP</small></div></td>
+                </tr>
+              </tbody></table>
+            </div>
+          </div>
+          <div id="own" class="tab-pane">
+            <div class="plan" data-date="2026-11-23">
+              <select class="form-control date-select">
+                <option value="2026-12-11">ab 11.12.2026</option>
+                <option value="2026-11-23" selected="selected">ab 23.11.2026 (bis 10.12.2026)</option>
+              </select>
+              <table><tbody>
+                <tr><td></td><td></td></tr>
+                <tr>
+                  <td><span class="print-show"><b>1</b><span class="VonBis">08:00 - 08:45</span></span></td>
+                  <td><div class="stunde"><b>Mathe</b> R101 <small>CAP</small></div></td>
+                </tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+    ''';
+
+    test('TimetableStudentParser parses versions without duplicating across #all/#own', () {
+      final tt = TimetableStudentParser.parseDocumentHtml(
+        parse(multiVersionStudentHtml),
+      );
+      expect(tt.planDate, '2026-11-23');
+      expect(tt.validFromLabel, 'ab 23.11.2026 (bis 10.12.2026)');
+      expect(tt.hasMultipleVersions, isTrue);
+      expect(tt.availableVersions, const [
+        TimetableVersion(
+          date: '2026-12-11',
+          label: 'ab 11.12.2026',
+          isSelected: false,
+        ),
+        TimetableVersion(
+          date: '2026-11-23',
+          label: 'ab 23.11.2026 (bis 10.12.2026)',
+          isSelected: true,
+        ),
+      ]);
+      expect(tt.selectedVersion?.date, '2026-11-23');
+
+      final roundTrip = TimeTable.fromJson(
+        jsonDecode(jsonEncode(tt.toJson())) as Map<String, dynamic>,
+      );
+      expect(roundTrip.planDate, tt.planDate);
+      expect(roundTrip.validFromLabel, tt.validFromLabel);
+      expect(roundTrip.availableVersions, tt.availableVersions);
+    });
+
+    test('TimetableStudentParser finds picker when present only in #own', () {
+      const ownOnlyPickerHtml = '''
+        <div id="content">
+          <div id="all">
+            <div class="plan" data-date="2026-11-23">
+              <table><tbody>
+                <tr><td></td><td></td></tr>
+                <tr><td><span class="print-show"><b>1</b><span class="VonBis">08:00 - 08:45</span></span></td><td></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+          <div id="own">
+            <div class="plan" data-date="2026-11-23">
+              <select class="date-select">
+                <option value="2026-12-11">ab 11.12.2026</option>
+                <option value="2026-11-23" selected>ab 23.11.2026</option>
+              </select>
+              <table><tbody>
+                <tr><td></td><td></td></tr>
+                <tr><td><span class="print-show"><b>1</b><span class="VonBis">08:00 - 08:45</span></span></td><td></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+      ''';
+      final tt = TimetableStudentParser.parseDocumentHtml(
+        parse(ownOnlyPickerHtml),
+      );
+      expect(tt.availableVersions, hasLength(2));
+      expect(tt.selectedVersion?.date, '2026-11-23');
+    });
+
+    test('TimetableStudentParser.getTimetableForDate validates date, rejects conflicting version, and normalizes cache keys', () async {
+      final studentParser = TimetableStudentParser(
+        context,
+        isConnected: () async => true,
+      );
+      addTearDown(studentParser.dispose);
+
+      await expectLater(
+        () => studentParser.getTimetableForDate('   '),
+        throwsArgumentError,
+      );
+      await expectLater(
+        () => studentParser.cached.getTimetableForDate(' 2026-11-23 '),
+        throwsArgumentError,
+      );
+
+      // Portal returns 2026-11-23 when 2026-12-11 was requested -> must reject!
+      adapter.overviewHtml = multiVersionStudentHtml;
+      await expectLater(
+        () => studentParser.getTimetableForDate('2026-12-11'),
+        throwsA(isA<UnknownException>()),
+      );
+
+      // Matching date succeeds and loadCachedTimetableForDate trims input.
+      final loaded = await studentParser.loadCachedTimetableForDate(
+        ' 2026-11-23 ',
+      );
+      expect(loaded.data.hasMultipleVersions, isTrue);
+      expect(loaded.data.planDate, '2026-11-23');
+      expect(adapter.requests.last.uri.queryParameters['date'], '2026-11-23');
+
+      // Direct #own tbody-only response without #all is accepted.
+      adapter.overviewHtml = '''
+        <div id="content">
+          <div id="own">
+            <div class="plan" data-date="2026-12-11">
+              <table><tbody>
+                <tr><td></td><td></td></tr>
+                <tr><td><span class="print-show"><b>1</b><span class="VonBis">08:00 - 08:45</span></span></td><td><div class="stunde"><b>Physik</b></div></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+      ''';
+      final ownOnly = await studentParser.getTimetableForDate('2026-12-11');
+      expect(ownOnly.planDate, '2026-12-11');
+      expect(ownOnly.planForOwn, isNotNull);
+      expect(ownOnly.hours, hasLength(1));
+      expect(ownOnly.hours!.single.label, '1');
+
+      // Login redirect must throw UnauthorizedException instead of caching empty plan.
+      adapter.overviewHtml = '';
+      adapter.redirectHome = true;
+      adapter.redirectLocation = '/index.php';
+      await expectLater(
+        () => studentParser.getTimetableForDate('2026-11-23'),
+        throwsA(isA<UnauthorizedException>()),
+      );
+    });
+
+    test('ParentTimetableReference equality, withDate, and getTimetableForPupil isolate versions', () async {
+      final ref = overview().timetables.first;
+      final withFuture = ref.withDate('2026-12-11');
+      expect(withFuture.date, '2026-12-11');
+      expect(withFuture.url.queryParameters['p'], ref.pupilId);
+      expect(withFuture.withDate(null).date, isNull);
+      expect(ref.withDate(ref.date), equals(ref));
+      expect(ref.withDate(ref.date).hashCode, equals(ref.hashCode));
+      expect(withFuture, isNot(equals(ref)));
+
+      await expectLater(
+        () => parser.getTimetableForPupil('  '),
+        throwsArgumentError,
+      );
+      await expectLater(
+        () => parser.cached.getTimetableForPupil('101', '   '),
+        throwsArgumentError,
+      );
+
+      // Conflicting planDate in response is rejected for both getTimetableForPupil and dated reference.
+      adapter.detailHtml = multiVersionStudentHtml;
+      await expectLater(
+        () => parser.loadCachedTimetableForPupil('101', '2026-12-11'),
+        throwsA(isA<UnknownException>()),
+      );
+      await expectLater(
+        () => parser.cached.getTimetable(withFuture),
+        throwsA(isA<UnknownException>()),
+      );
+
+      // Matching date succeeds with trimmed pupilId and date.
+      final loaded = await parser.loadCachedTimetableForPupil(
+        ' 101 ',
+        ' 2026-11-23 ',
+      );
+      expect(loaded.data.pupilId, '101');
+      expect(loaded.data.timetable.hasMultipleVersions, isTrue);
+      expect(adapter.requests.last.uri.queryParameters['date'], '2026-11-23');
+      expect(adapter.requests.last.uri.queryParameters['p'], '101');
+    });
+  });
 }

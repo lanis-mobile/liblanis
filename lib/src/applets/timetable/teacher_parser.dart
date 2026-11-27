@@ -12,9 +12,11 @@ import '../../exceptions.dart';
 import '../../models/time_of_day.dart';
 import '../../models/timetable.dart';
 import '../../models/timetable_teacher.dart';
+import '../../models/timetable_url.dart';
 import '../applet_context.dart';
 import '../applet_parser.dart';
 import '../definition.dart';
+import 'version_parser.dart';
 
 part 'teacher_parser.g.dart';
 
@@ -235,11 +237,20 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     try {
       final response = await ctx.session.dio.getUri(uri);
       _assertOkResponse(response, 'Teacher timetable detail');
-      return parsePlanDocument(
+      final plan = parsePlanDocument(
         parse(response.data),
         category: category,
         targetId: targetId,
       );
+      final requestedDate = TimetableUrlHelper.readDateParam(uri);
+      if (requestedDate != null &&
+          plan.planDate != null &&
+          plan.planDate != requestedDate) {
+        throw UnknownException(
+          'Requested teacher timetable date "$requestedDate", but portal returned "${plan.planDate}"',
+        );
+      }
+      return plan;
     } catch (error, stack) {
       if (error is LanisException) rethrow;
       if (CacheService.isTransportFailure(error)) {
@@ -279,11 +290,14 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     String? date,
     String? exemplar,
   }) {
+    final trimmedExemplar = exemplar?.trim();
+    final trimmedDate = date?.trim();
     final query = <String, String>{
-      if (exemplar != null && exemplar.isNotEmpty) 'e': exemplar,
+      if (trimmedExemplar != null && trimmedExemplar.isNotEmpty)
+        'e': trimmedExemplar,
       'a': action,
       if (paramName != null && paramValue != null) paramName: paramValue,
-      if (date != null && date.isNotEmpty) 'date': date,
+      if (trimmedDate != null && trimmedDate.isNotEmpty) 'date': trimmedDate,
     };
     return _base.replace(path: '/stundenplan.php', queryParameters: query);
   }
@@ -525,8 +539,26 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     if (planRoot == null) {
       throw UnknownException('Missing teacher timetable plan (.plan)');
     }
-    final planDate = planRoot.attributes['data-date']?.trim();
-    final validFromLabel = _extractValidFrom(planRoot);
+    final rawPlanDate = planRoot.attributes['data-date']?.trim();
+    final availableVersions = TimetableVersionHelper.parseVersions(
+      planRoot,
+      planDate: rawPlanDate,
+    );
+    var planDate = (rawPlanDate != null && rawPlanDate.isNotEmpty)
+        ? rawPlanDate
+        : null;
+    if (planDate == null) {
+      for (final v in availableVersions) {
+        if (v.isSelected) {
+          planDate = v.date;
+          break;
+        }
+      }
+    }
+    final validFromLabel = TimetableVersionHelper.extractValidFrom(
+      planRoot,
+      versions: availableVersions,
+    );
     final weekBadge = document.querySelector('#aktuelleWoche')?.text.trim();
     final noticeHtml = _extractNoticeHtml(content);
 
@@ -587,6 +619,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
         roomTeachers: roomTeachers,
         roomTeacherContacts: roomContacts,
         availableTargets: availableTargets,
+        availableVersions: availableVersions,
         weekdayIndices: const [],
         hours: const [],
         days: const [],
@@ -618,6 +651,7 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       roomTeachers: roomTeachers,
       roomTeacherContacts: roomContacts,
       availableTargets: availableTargets,
+      availableVersions: availableVersions,
       weekdayIndices: weekdayIndices,
       hours: hours,
       days: days,
@@ -711,20 +745,12 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
     return _cleanText(clone.text);
   }
 
-  static String? _extractValidFrom(Element? planRoot) {
-    if (planRoot == null) return null;
-    for (final span in planRoot.querySelectorAll('span')) {
-      final t = _cleanText(span.text);
-      if (t.startsWith('Stundenplan gültig')) {
-        final rest = t.replaceFirst('Stundenplan gültig', '').trim();
-        return rest.isEmpty ? t : rest;
-      }
-    }
-    return null;
-  }
-
   static String? _extractNoticeHtml(Element content) {
     for (final alert in content.querySelectorAll('.alert.alert-warning')) {
+      // Skip only the multi-version date-picker wrapper, not genuine notices.
+      if (alert.querySelector('select.date-select') != null) {
+        continue;
+      }
       // Skip the static freeRoom warning banner.
       final text = _cleanText(alert.text);
       if (text.startsWith('Es können nur Räume gefunden werden')) continue;

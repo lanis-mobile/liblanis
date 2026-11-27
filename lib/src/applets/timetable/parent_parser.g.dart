@@ -31,6 +31,19 @@ class _TimetableParentParserCached {
     load: () => _owner._getTimetable(reference),
     policy: cachePolicy,
   );
+  Future<MaybeCacheResult<ParentTimetableLoaded>> getTimetableForPupil(
+    String pupilId,
+    String date, {
+    CacheReadPolicy? cachePolicy,
+  }) => _owner.cacheService.execute(
+    accountId: _owner.cacheAccountId,
+    request: TimetableParentParserCacheRequests.getTimetableForPupil(
+      pupilId,
+      date,
+    ),
+    load: () => _owner._getTimetableForPupil(pupilId, date),
+    policy: cachePolicy,
+  );
 }
 
 abstract final class TimetableParentParserCacheRequests {
@@ -56,6 +69,24 @@ abstract final class TimetableParentParserCacheRequests {
         'type': 'package:liblanis/src/models/timetable_parent.dart#ParentTimetableReference<>',
         'value': reference.toJson(),
       },
+    },
+    appletLimit: Duration(microseconds: 3600000000),
+    codec: CacheCodec<ParentTimetableLoaded>(
+      id: 'package:liblanis/src/models/timetable_parent.dart#ParentTimetableLoaded<>@1',
+      encode: (value) => value.toJson(),
+      decode: (json) =>
+          ParentTimetableLoaded.fromJson(json as Map<String, dynamic>),
+    ),
+  );
+  static CacheRequest<ParentTimetableLoaded> getTimetableForPupil(
+    String pupilId,
+    String date,
+  ) => CacheRequest(
+    operation: 'timetable.parent.pupil_version',
+    version: 1,
+    arguments: {
+      'pupilId': {'type': 'dart:core#String<>', 'value': pupilId},
+      'date': {'type': 'dart:core#String<>', 'value': date},
     },
     appletLimit: Duration(microseconds: 3600000000),
     codec: CacheCodec<ParentTimetableLoaded>(

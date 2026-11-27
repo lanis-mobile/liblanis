@@ -453,6 +453,50 @@ void main() {
       expect(cached.data.teachers.length, overview.teachers.length);
     });
 
+    test('cached.getTimetable isolates cache entries per version date', () async {
+      final refCurrent = TeacherTimetableReference(
+        category: TeacherTimetableCategory.teacher,
+        id: 'CAP2',
+        label: 'CAP2',
+        url: Uri.parse(
+          'https://start.schulportal.hessen.de/stundenplan.php?e=1&a=detail&t=CAP2&date=2026-11-23',
+        ),
+      );
+      final refFuture = refCurrent.withDate('2026-12-11');
+
+      adapter.teacherHtml = _fixture('teacher_multi_version_current');
+      final r1 = await parser.cached.getTimetable(refCurrent);
+      expect(r1.data.planDate, '2026-11-23');
+
+      adapter.teacherHtml = _fixture('teacher_multi_version_future');
+      final r2 = await parser.cached.getTimetable(refFuture);
+      expect(r2.data.planDate, '2026-12-11');
+      expect(
+        r2.data.days.expand((d) => d).any((e) => e.subject == 'ZukunftsMathe'),
+        isTrue,
+      );
+
+      // Re-reading current from cache must still return 2026-11-23 (no collision).
+      final r1Again = await parser.cached.getTimetable(
+        refCurrent,
+        cachePolicy: CacheReadPolicy.cacheOnly,
+      );
+      expect(r1Again.data.planDate, '2026-11-23');
+      expect(
+        r1Again.data.days
+            .expand((d) => d)
+            .any((e) => e.subject == 'ZukunftsMathe'),
+        isFalse,
+      );
+
+      // Portal returning the wrong date for a dated reference must fail instead of caching.
+      adapter.teacherHtml = _fixture('teacher_multi_version_current');
+      await expectLater(
+        () => parser.cached.getTimetable(refCurrent.withDate('2026-12-24')),
+        throwsA(isA<UnknownException>()),
+      );
+    });
+
     test('EasyParsers routes stundenplan.php for AccountType.teacher to TimetableTeacherParser', () {
       final parsers = EasyParsers(ctx: context, isConnected: () async => true);
       expect(parsers.forApplet('stundenplan.php'), isA<TimetableTeacherParser>());
@@ -668,6 +712,269 @@ void main() {
         </div>
       ''');
       expect(free.rooms, hasLength(1));
+    });
+  });
+
+  group('TimetableTeacherParser - multi-version support', () {
+    test('parses real multi-version current & future fixtures without notice leak', () {
+      final current = TimetableTeacherParser.parsePlanHtml(
+        _fixture('teacher_multi_version_current'),
+        category: TeacherTimetableCategory.teacher,
+        targetId: 'CAP2',
+      );
+      expect(current.planDate, '2026-11-23');
+      expect(current.validFromLabel, 'ab 23.11.2026 (bis 10.12.2026)');
+      expect(current.noticeHtml, isNull);
+      expect(current.hasMultipleVersions, isTrue);
+      expect(current.availableVersions, const [
+        TimetableVersion(
+          date: '2026-12-11',
+          label: 'ab 11.12.2026',
+          isSelected: false,
+        ),
+        TimetableVersion(
+          date: '2026-11-23',
+          label: 'ab 23.11.2026 (bis 10.12.2026)',
+          isSelected: true,
+        ),
+      ]);
+      expect(current.selectedVersion, current.availableVersions[1]);
+
+      final future = TimetableTeacherParser.parsePlanHtml(
+        _fixture('teacher_multi_version_future'),
+        category: TeacherTimetableCategory.teacher,
+        targetId: 'CAP2',
+      );
+      expect(future.planDate, '2026-12-11');
+      expect(future.validFromLabel, 'ab 11.12.2026');
+      expect(future.noticeHtml, isNull);
+      expect(future.hasMultipleVersions, isTrue);
+      expect(future.availableVersions, const [
+        TimetableVersion(
+          date: '2026-12-11',
+          label: 'ab 11.12.2026',
+          isSelected: true,
+        ),
+        TimetableVersion(
+          date: '2026-11-23',
+          label: 'ab 23.11.2026 (bis 10.12.2026)',
+          isSelected: false,
+        ),
+      ]);
+      expect(future.selectedVersion, future.availableVersions[0]);
+      expect(
+        future.days.expand((d) => d).any((e) => e.subject == 'ZukunftsMathe'),
+        isTrue,
+      );
+
+      // JSON round-trip & equality preserve availableVersions.
+      final roundTrip = TeacherTimetablePlan.fromJson(
+        jsonDecode(jsonEncode(future.toJson())) as Map<String, dynamic>,
+      );
+      expect(roundTrip, equals(future));
+      expect(roundTrip.hashCode, equals(future.hashCode));
+    });
+
+    test('single-version fixture has empty availableVersions', () {
+      final single = TimetableTeacherParser.parsePlanHtml(
+        _fixture('class_all'),
+        category: TeacherTimetableCategory.schoolClass,
+        targetId: '1',
+      );
+      expect(single.availableVersions, isEmpty);
+      expect(single.hasMultipleVersions, isFalse);
+      expect(single.selectedVersion, isNull);
+    });
+
+    test('real admin notice coexists with multi-version date-select warning bar', () {
+      final plan = TimetableTeacherParser.parsePlanHtml(
+        '''
+        <div id="content">
+          <h1 data-exemplar="1">CAP2 <small>Stundenplan</small></h1>
+          <div class="alert alert-warning"><strong>Hinweis:</strong> Raumänderung!</div>
+          <div class="plan" data-date="2026-12-11">
+            <div class="row alert alert-warning hidden-print">
+              <form class="form-inline">
+                <select class="form-control date-select">
+                  <option value="2026-12-11" selected="selected">ab 11.12.2026</option>
+                  <option value="2026-11-23">ab 23.11.2026 (bis 10.12.2026)</option>
+                </select>
+              </form>
+            </div>
+          </div>
+        </div>
+        ''',
+        category: TeacherTimetableCategory.teacher,
+        targetId: 'CAP2',
+      );
+      expect(plan.noticeHtml, contains('Raumänderung!'));
+      expect(plan.noticeHtml, isNot(contains('date-select')));
+      expect(plan.availableVersions, hasLength(2));
+      expect(plan.validFromLabel, 'ab 11.12.2026');
+
+      // Genuine warning nested inside .plan alongside the date-picker bar is preserved.
+      final nestedNotice = TimetableTeacherParser.parsePlanHtml(
+        '''
+        <div id="content">
+          <h1 data-exemplar="1">CAP2</h1>
+          <div class="plan" data-date="2026-12-11">
+            <div class="row alert alert-warning hidden-print">
+              <select class="form-control date-select">
+                <option value="2026-12-11" selected>ab 11.12.2026</option>
+                <option value="2026-11-23">ab 23.11.2026</option>
+              </select>
+            </div>
+            <div class="alert alert-warning">Wichtiger Planhinweis</div>
+          </div>
+        </div>
+        ''',
+        category: TeacherTimetableCategory.teacher,
+        targetId: 'CAP2',
+      );
+      expect(nestedNotice.noticeHtml, 'Wichtiger Planhinweis');
+    });
+
+    test('reconciles conflicting data-date and multiple selected attributes to a single selection', () {
+      final plan = TimetableTeacherParser.parsePlanHtml(
+        '''
+        <div id="content">
+          <h1>CAP2</h1>
+          <div class="plan" data-date="2026-11-23">
+            <select class="date-select">
+              <option value="2026-12-11" selected>ab 11.12.2026</option>
+              <option value="2026-12-01" selected>ab 01.12.2026</option>
+              <option value="2026-11-23">ab 23.11.2026</option>
+            </select>
+          </div>
+        </div>
+        ''',
+        category: TeacherTimetableCategory.teacher,
+        targetId: 'CAP2',
+      );
+      expect(plan.planDate, '2026-11-23');
+      expect(plan.availableVersions.where((v) => v.isSelected), hasLength(1));
+      expect(plan.selectedVersion?.date, '2026-11-23');
+      expect(plan.validFromLabel, 'ab 23.11.2026');
+
+      // When data-date is present but absent from options, selection stays unset.
+      final unmatched = TimetableTeacherParser.parsePlanHtml(
+        '''
+        <div id="content">
+          <h1>CAP2</h1>
+          <div class="plan" data-date="2026-10-01">
+            <select class="date-select">
+              <option value="2026-12-11" selected>ab 11.12.2026</option>
+              <option value="2026-11-23">ab 23.11.2026</option>
+            </select>
+          </div>
+        </div>
+        ''',
+        category: TeacherTimetableCategory.teacher,
+        targetId: 'CAP2',
+      );
+      expect(unmatched.planDate, '2026-10-01');
+      expect(unmatched.selectedVersion, isNull);
+      expect(unmatched.validFromLabel, isNull);
+    });
+
+    test('handles duplicate, blank, unselected options and missing data-date', () {
+      final plan = TimetableTeacherParser.parsePlanHtml(
+        '''
+        <div id="content">
+          <h1>CAP2</h1>
+          <div class="plan" data-date="">
+            <select class="date-select">
+              <option value="">Ignore</option>
+              <option value="2026-12-11">ab 11.12.2026</option>
+              <option value="2026-12-11" selected>ab 11.12.2026 dup</option>
+              <option value="2026-11-23">   </option>
+            </select>
+          </div>
+        </div>
+        ''',
+        category: TeacherTimetableCategory.teacher,
+        targetId: 'CAP2',
+      );
+      expect(plan.availableVersions, const [
+        TimetableVersion(
+          date: '2026-12-11',
+          label: 'ab 11.12.2026',
+          isSelected: true,
+        ),
+        TimetableVersion(
+          date: '2026-11-23',
+          label: '2026-11-23',
+          isSelected: false,
+        ),
+      ]);
+      expect(plan.planDate, '2026-12-11');
+
+      final fallbackSelected = TimetableTeacherParser.parsePlanHtml(
+        '''
+        <div id="content">
+          <h1>CAP2</h1>
+          <div class="plan" data-date="2026-11-23">
+            <select class="date-select">
+              <option value="2026-12-11">ab 11.12.2026</option>
+              <option value="2026-11-23">ab 23.11.2026</option>
+            </select>
+          </div>
+        </div>
+        ''',
+        category: TeacherTimetableCategory.teacher,
+        targetId: 'CAP2',
+      );
+      expect(fallbackSelected.selectedVersion?.date, '2026-11-23');
+      expect(fallbackSelected.availableVersions[1].isSelected, isTrue);
+    });
+
+    test('TeacherTimetableReference.date and withDate rewrite URL cleanly', () {
+      final ref = TeacherTimetableReference(
+        category: TeacherTimetableCategory.teacher,
+        id: 'CAP2',
+        label: 'CAP2',
+        url: Uri.parse(
+          'https://start.schulportal.hessen.de/stundenplan.php?e=1&a=detail&t=CAP2&date=2026-11-23',
+        ),
+      );
+      expect(ref.date, '2026-11-23');
+
+      final futureRef = ref.withDate('2026-12-11');
+      expect(futureRef.date, '2026-12-11');
+      expect(futureRef.url.queryParameters['t'], 'CAP2');
+      expect(futureRef.url.queryParameters['e'], '1');
+      expect(futureRef.url.queryParameters['a'], 'detail');
+      expect(futureRef, isNot(equals(ref)));
+
+      final clearedRef = ref.withDate(null);
+      expect(clearedRef.date, isNull);
+      expect(clearedRef.url.queryParameters.containsKey('date'), isFalse);
+
+      // Date-only URL: clearing date must actually strip the query string.
+      final dateOnly = TeacherTimetableReference(
+        category: TeacherTimetableCategory.teacher,
+        id: 'CAP2',
+        label: 'CAP2',
+        url: Uri.parse(
+          'https://start.schulportal.hessen.de/stundenplan.php?date=2026-11-23',
+        ),
+      );
+      final stripped = dateOnly.withDate(null);
+      expect(stripped.date, isNull);
+      expect(stripped.url.toString(), 'https://start.schulportal.hessen.de/stundenplan.php');
+
+      // Malformed percent-encoding in unrelated parameter must not be double-encoded.
+      final malformed = TeacherTimetableReference(
+        category: TeacherTimetableCategory.teacher,
+        id: 'MUE',
+        label: 'Müller',
+        url: Uri.parse(
+          'https://start.schulportal.hessen.de/stundenplan.php?a=detail&t=M%FCller&date=2026-11-23',
+        ),
+      );
+      final rewritten = malformed.withDate('2026-12-11');
+      expect(rewritten.url.query, 'a=detail&t=M%FCller&date=2026-12-11');
+      expect(malformed.withDate(null).url.query, 'a=detail&t=M%FCller');
     });
   });
 }

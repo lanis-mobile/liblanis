@@ -5,6 +5,7 @@ import 'package:html/parser.dart';
 
 import '../../exceptions.dart';
 import '../../models/timetable_parent.dart';
+import '../../models/timetable_url.dart';
 import '../applet_context.dart';
 import '../applet_parser.dart';
 import '../definition.dart';
@@ -46,6 +47,55 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome>
   Future<ParentTimetableLoaded> _getTimetable(
     ParentTimetableReference reference,
   ) => getTimetable(reference);
+
+  @Cacheable(
+    operation: 'timetable.parent.pupil_version',
+    applet: Applets.timetable,
+  )
+  Future<ParentTimetableLoaded> _getTimetableForPupil(
+    String pupilId,
+    String date,
+  ) {
+    final trimmedPupil = pupilId.trim();
+    if (trimmedPupil.isEmpty || trimmedPupil != pupilId) {
+      throw ArgumentError.value(
+        pupilId,
+        'pupilId',
+        'Must be non-empty and trimmed for cache key consistency',
+      );
+    }
+    final trimmedDate = date.trim();
+    if (trimmedDate.isEmpty || trimmedDate != date) {
+      throw ArgumentError.value(
+        date,
+        'date',
+        'Must be non-empty and trimmed for cache key consistency',
+      );
+    }
+    return getTimetableForPupil(trimmedPupil, date: trimmedDate);
+  }
+
+  /// Cached entry point for a specific child's timetable version that
+  /// normalizes [pupilId] and [date] before constructing the cache key.
+  Future<MaybeCacheResult<ParentTimetableLoaded>> loadCachedTimetableForPupil(
+    String pupilId,
+    String date, {
+    CacheReadPolicy? policy,
+  }) {
+    final trimmedPupil = pupilId.trim();
+    if (trimmedPupil.isEmpty) {
+      throw ArgumentError.value(pupilId, 'pupilId', 'Must not be empty');
+    }
+    final trimmedDate = date.trim();
+    if (trimmedDate.isEmpty) {
+      throw ArgumentError.value(date, 'date', 'Must not be empty');
+    }
+    return cached.getTimetableForPupil(
+      trimmedPupil,
+      trimmedDate,
+      cachePolicy: policy,
+    );
+  }
 
   /// Return a selection, or follow the single-child redirect and load its plan.
   /// A selection takes one request. A redirected plan takes two.
@@ -145,13 +195,48 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome>
     ParentTimetableReference reference,
   ) async => _loadPlan(_referenceUrl(reference));
 
+  /// Load a specific child's timetable by [pupilId] and optional [date].
+  ///
+  /// Useful for single-child parent accounts (where [getHome] returned
+  /// [ParentTimetableLoaded] directly without a [ParentTimetableReference])
+  /// when switching between [TimeTable.availableVersions].
+  Future<ParentTimetableLoaded> getTimetableForPupil(
+    String pupilId, {
+    String? date,
+  }) async {
+    final trimmedPupil = pupilId.trim();
+    if (trimmedPupil.isEmpty) {
+      throw ArgumentError.value(pupilId, 'pupilId', 'Must not be empty');
+    }
+    final trimmedDate = date?.trim();
+    final hasDate = trimmedDate != null && trimmedDate.isNotEmpty;
+    final uri = _base.replace(
+      path: '/stundenplan.php',
+      queryParameters: {
+        'a': 'detail_klasse',
+        'p': trimmedPupil,
+        if (hasDate) 'date': trimmedDate,
+      },
+    );
+    return _loadPlan(uri);
+  }
+
   Future<ParentTimetableLoaded> _loadPlan(Uri url) async {
     try {
       final response = await ctx.session.dio.get(url.toString());
-      return parseLoadedDocument(
+      final loaded = parseLoadedDocument(
         parse(response.data),
         pupilId: url.queryParameters['p']!,
       );
+      final requestedDate = TimetableUrlHelper.readDateParam(url);
+      if (requestedDate != null &&
+          loaded.timetable.planDate != null &&
+          loaded.timetable.planDate != requestedDate) {
+        throw UnknownException(
+          'Requested parent timetable date "$requestedDate", but portal returned "${loaded.timetable.planDate}"',
+        );
+      }
+      return loaded;
     } catch (error, stack) {
       if (error is LanisException) rethrow;
       if (CacheService.isTransportFailure(error)) {

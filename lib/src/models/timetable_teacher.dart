@@ -1,5 +1,6 @@
 import 'time_of_day.dart';
 import 'timetable.dart';
+import 'timetable_url.dart';
 
 bool _listEquals<T>(List<T> a, List<T> b) {
   if (identical(a, b)) return true;
@@ -49,6 +50,18 @@ class TeacherTimetableReference {
     required this.label,
     required this.url,
   });
+
+  /// The `date` query parameter encoded in [url], if any.
+  String? get date => TimetableUrlHelper.readDateParam(url);
+
+  /// Returns a copy of this reference targeting [date] (or removing `date`
+  /// when null/blank), suitable for passing to `getTimetable` / `cached.getTimetable`.
+  TeacherTimetableReference withDate(String? date) => TeacherTimetableReference(
+    category: category,
+    id: id,
+    label: label,
+    url: TimetableUrlHelper.withDateParam(url, date),
+  );
 
   Map<String, dynamic> toJson() => {
     'category': category.name,
@@ -382,6 +395,9 @@ class TeacherTimetablePlan {
   final List<TeacherTimetableContact> roomTeacherContacts;
   final List<TeacherTimetableReference> availableTargets;
 
+  /// Selectable timetable versions parsed from `select.date-select`, if present.
+  final List<TimetableVersion> availableVersions;
+
   /// Weekday indices (0 = Monday .. 6 = Sunday), parallel to [days].
   final List<int> weekdayIndices;
 
@@ -406,17 +422,33 @@ class TeacherTimetablePlan {
     List<String> roomTeachers = const [],
     List<TeacherTimetableContact> roomTeacherContacts = const [],
     List<TeacherTimetableReference> availableTargets = const [],
+    List<TimetableVersion> availableVersions = const [],
     required List<int> weekdayIndices,
     required List<TimeTableRow> hours,
     required List<List<TeacherTimetableEntry>> days,
   }) : roomTeachers = List.unmodifiable(roomTeachers),
        roomTeacherContacts = List.unmodifiable(roomTeacherContacts),
        availableTargets = List.unmodifiable(availableTargets),
+       availableVersions = List.unmodifiable(availableVersions),
        weekdayIndices = List.unmodifiable(weekdayIndices),
        hours = List.unmodifiable(hours),
        days = List.unmodifiable(
          days.map((d) => List<TeacherTimetableEntry>.unmodifiable(d)),
        );
+
+  bool get hasMultipleVersions => availableVersions.length > 1;
+
+  TimetableVersion? get selectedVersion {
+    for (final v in availableVersions) {
+      if (v.isSelected) return v;
+    }
+    if (planDate != null && planDate!.isNotEmpty) {
+      for (final v in availableVersions) {
+        if (v.date == planDate) return v;
+      }
+    }
+    return null;
+  }
 
   bool get hasEmbeddedSubstitutions =>
       days.any((d) => d.any((e) => e.isEmbeddedSubstitution));
@@ -445,6 +477,8 @@ class TeacherTimetablePlan {
           .toList(),
     if (availableTargets.isNotEmpty)
       'availableTargets': availableTargets.map((e) => e.toJson()).toList(),
+    if (availableVersions.isNotEmpty)
+      'availableVersions': availableVersions.map((e) => e.toJson()).toList(),
     'weekdayIndices': weekdayIndices,
     'hours': hours.map((h) => h.toJson()).toList(),
     'days': days.map((d) => d.map((e) => e.toJson()).toList()).toList(),
@@ -481,6 +515,9 @@ class TeacherTimetablePlan {
                   TeacherTimetableReference.fromJson(e as Map<String, dynamic>),
             )
             .toList(),
+        availableVersions: (json['availableVersions'] as List? ?? const [])
+            .map((e) => TimetableVersion.fromJson(e as Map<String, dynamic>))
+            .toList(),
         weekdayIndices: (json['weekdayIndices'] as List).cast<int>(),
         hours: (json['hours'] as List)
             .map((e) => TimeTableRow.fromJson(e as Map<String, dynamic>))
@@ -515,6 +552,7 @@ class TeacherTimetablePlan {
       _listEquals(roomTeachers, other.roomTeachers) &&
       _listEquals(roomTeacherContacts, other.roomTeacherContacts) &&
       _listEquals(availableTargets, other.availableTargets) &&
+      _listEquals(availableVersions, other.availableVersions) &&
       _listEquals(weekdayIndices, other.weekdayIndices) &&
       _listEquals(hours, other.hours) &&
       _nestedListEquals(days, other.days);
@@ -535,6 +573,7 @@ class TeacherTimetablePlan {
     Object.hashAll(roomTeachers),
     Object.hashAll(roomTeacherContacts),
     Object.hashAll(availableTargets),
+    Object.hashAll(availableVersions),
     Object.hashAll(weekdayIndices),
     Object.hashAll(hours),
     Object.hashAll(days.map(Object.hashAll)),
