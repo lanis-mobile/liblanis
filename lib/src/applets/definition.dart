@@ -42,7 +42,11 @@ class Applets {
 
   static const timetable = AppletMeta(
     appletPhpUrl: 'stundenplan.php',
-    supportedAccountTypes: [AccountType.student, AccountType.parent],
+    supportedAccountTypes: [
+      AccountType.student,
+      AccountType.teacher,
+      AccountType.parent,
+    ],
     refreshInterval: Duration(hours: 1),
     allowOffline: true,
   );

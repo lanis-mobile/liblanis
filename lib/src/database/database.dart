@@ -149,6 +149,31 @@ class LanisDatabase implements CacheStore {
   }
 
   @override
+  Set<String> listAvailableArgumentHashes({
+    required int accountId,
+    required String operation,
+    required int version,
+    required String codecId,
+    required DateTime now,
+    required DateTime minFetchedAt,
+  }) {
+    final rows = _db.select(
+      'SELECT argument_hash FROM cache_entries '
+      'WHERE account_id=? AND operation=? AND version=? AND codec_id=? '
+      'AND expires_at>? AND fetched_at>?',
+      [
+        accountId,
+        operation,
+        version,
+        codecId,
+        now.toUtc().microsecondsSinceEpoch,
+        minFetchedAt.toUtc().microsecondsSinceEpoch,
+      ],
+    );
+    return {for (final r in rows) r['argument_hash'] as String};
+  }
+
+  @override
   CacheGeneration cacheGeneration(int accountId) => (
     global:
         _db

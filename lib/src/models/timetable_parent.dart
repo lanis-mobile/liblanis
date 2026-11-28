@@ -1,4 +1,5 @@
 import 'timetable.dart';
+import 'timetable_url.dart';
 
 /// The parent portal either offers a choice or opens one child's plan.
 sealed class ParentTimetableHome {
@@ -78,6 +79,18 @@ class ParentTimetableReference {
     required this.url,
   });
 
+  /// The `date` query parameter encoded in [url], if any.
+  String? get date => TimetableUrlHelper.readDateParam(url);
+
+  /// Returns a copy of this reference targeting [date] (or removing `date`
+  /// when null/blank), suitable for passing to `getTimetable` / `cached.getTimetable`.
+  ParentTimetableReference withDate(String? date) => ParentTimetableReference(
+    pupilId: pupilId,
+    pupilName: pupilName,
+    className: className,
+    url: TimetableUrlHelper.withDateParam(url, date),
+  );
+
   Map<String, dynamic> toJson() => {
     'pupilId': pupilId,
     'pupilName': pupilName,
@@ -92,4 +105,15 @@ class ParentTimetableReference {
         className: json['className'] as String,
         url: Uri.parse(json['url'] as String),
       );
+
+  @override
+  bool operator ==(Object other) =>
+      other is ParentTimetableReference &&
+      pupilId == other.pupilId &&
+      pupilName == other.pupilName &&
+      className == other.className &&
+      url == other.url;
+
+  @override
+  int get hashCode => Object.hash(pupilId, pupilName, className, url);
 }

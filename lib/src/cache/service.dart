@@ -36,6 +36,43 @@ class CacheService {
     required CacheRequest<T> request,
   }) async => _inspect(accountId, request).availability.isAvailable;
 
+  /// Batch-checks which [requests] have unexpired cache metadata for
+  /// [accountId] using at most one metadata query per distinct
+  /// `(operation, version, codec.id, maxAge)` group, without decoding payloads.
+  Future<Set<CacheRequest<T>>> availableRequestsFor<T>({
+    required int accountId,
+    required Iterable<CacheRequest<T>> requests,
+  }) async {
+    final list = requests.toList(growable: false);
+    if (list.isEmpty) return const {};
+    final now = _now;
+    final hashSets = <(String, int, String, int), Set<String>>{};
+    final available = <CacheRequest<T>>{};
+    for (final req in list) {
+      final groupKey = (
+        req.operation,
+        req.version,
+        req.codec.id,
+        req.maxAge.inMicroseconds,
+      );
+      final hashes = hashSets.putIfAbsent(
+        groupKey,
+        () => store.listAvailableArgumentHashes(
+          accountId: accountId,
+          operation: req.operation,
+          version: req.version,
+          codecId: req.codec.id,
+          now: now,
+          minFetchedAt: now.subtract(req.maxAge),
+        ),
+      );
+      if (hashes.contains(req.argumentHash)) {
+        available.add(req);
+      }
+    }
+    return available;
+  }
+
   _Inspection _inspect<T>(int accountId, CacheRequest<T> request) {
     final key = request.keyFor(accountId);
     CacheRecord? record;

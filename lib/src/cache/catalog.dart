@@ -5,12 +5,14 @@ import '../applets/file_distribution/parser.dart';
 import '../applets/substitutions/parser.dart';
 import '../applets/timetable/parser.dart';
 import '../applets/timetable/parent_parser.dart';
+import '../applets/timetable/teacher_parser.dart';
 import '../database/database.dart';
 import '../models/account_types.dart';
 import '../models/file_distribution.dart';
 import '../models/substitution.dart';
 import '../models/timetable.dart';
 import '../models/timetable_parent.dart';
+import '../models/timetable_teacher.dart';
 import 'service.dart';
 import 'store.dart';
 import 'types.dart';
@@ -43,6 +45,11 @@ abstract final class CachedAppletHomes {
       applet: Applets.timetable,
       accountType: AccountType.parent,
       request: TimetableParentParserCacheRequests.getHome,
+    ),
+    CachedAppletHome<TeacherTimetableOverview>(
+      applet: Applets.timetable,
+      accountType: AccountType.teacher,
+      request: TimetableTeacherParserCacheRequests.getHome,
     ),
     for (final type in AccountType.values)
       CachedAppletHome<SubstitutionPlan>(
@@ -80,7 +87,7 @@ abstract final class CachedAppletHomes {
           .where((a) => a.localId == row.accountId)
           .firstOrNull;
       final home = find(row.appletId, account?.accountType);
-      if (home == null) continue;
+      if (home == null || home.accountType == AccountType.teacher) continue;
       final request = home.request();
       try {
         if (request.version != 1 ||

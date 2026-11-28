@@ -5,6 +5,7 @@ import 'package:html/parser.dart';
 
 import '../../exceptions.dart';
 import '../../models/timetable_parent.dart';
+import '../../models/timetable_url.dart';
 import '../applet_context.dart';
 import '../applet_parser.dart';
 import '../definition.dart';
@@ -47,6 +48,55 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome>
     ParentTimetableReference reference,
   ) => getTimetable(reference);
 
+  @Cacheable(
+    operation: 'timetable.parent.pupil_version',
+    applet: Applets.timetable,
+  )
+  Future<ParentTimetableLoaded> _getTimetableForPupil(
+    String pupilId,
+    String date,
+  ) {
+    final trimmedPupil = pupilId.trim();
+    if (trimmedPupil.isEmpty || trimmedPupil != pupilId) {
+      throw ArgumentError.value(
+        pupilId,
+        'pupilId',
+        'Must be non-empty and trimmed for cache key consistency',
+      );
+    }
+    final trimmedDate = date.trim();
+    if (trimmedDate.isEmpty || trimmedDate != date) {
+      throw ArgumentError.value(
+        date,
+        'date',
+        'Must be non-empty and trimmed for cache key consistency',
+      );
+    }
+    return getTimetableForPupil(trimmedPupil, date: trimmedDate);
+  }
+
+  /// Cached entry point for a specific child's timetable version that
+  /// normalizes [pupilId] and [date] before constructing the cache key.
+  Future<MaybeCacheResult<ParentTimetableLoaded>> loadCachedTimetableForPupil(
+    String pupilId,
+    String date, {
+    CacheReadPolicy? policy,
+  }) {
+    final trimmedPupil = pupilId.trim();
+    if (trimmedPupil.isEmpty) {
+      throw ArgumentError.value(pupilId, 'pupilId', 'Must not be empty');
+    }
+    final trimmedDate = date.trim();
+    if (trimmedDate.isEmpty) {
+      throw ArgumentError.value(date, 'date', 'Must not be empty');
+    }
+    return cached.getTimetableForPupil(
+      trimmedPupil,
+      trimmedDate,
+      cachePolicy: policy,
+    );
+  }
+
   /// Return a selection, or follow the single-child redirect and load its plan.
   /// A selection takes one request. A redirected plan takes two.
   @override
@@ -55,10 +105,19 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome>
       final response = await ctx.session.dio.get(
         _base.resolve('stundenplan.php').toString(),
       );
+      if (response.statusCode == 503) {
+        throw LanisDownException();
+      }
       if (response.statusCode == 302) {
         final location = response.headers.value('location');
         if (location == null || location.isEmpty) {
           throw UnknownException('Missing parent timetable redirect location');
+        }
+        final lower = location.toLowerCase();
+        if (lower.contains('login') || lower.contains('index.php')) {
+          throw UnauthorizedException(
+            'Parent timetable overview: redirected to $location',
+          );
         }
         return await _loadPlan(_planUrl(response.realUri.resolve(location)));
       }
@@ -145,13 +204,67 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome>
     ParentTimetableReference reference,
   ) async => _loadPlan(_referenceUrl(reference));
 
+  /// Load a specific child's timetable by [pupilId] and optional [date].
+  ///
+  /// Useful for single-child parent accounts (where [getHome] returned
+  /// [ParentTimetableLoaded] directly without a [ParentTimetableReference])
+  /// when switching between [TimeTable.availableVersions].
+  Future<ParentTimetableLoaded> getTimetableForPupil(
+    String pupilId, {
+    String? date,
+  }) async {
+    final trimmedPupil = pupilId.trim();
+    if (trimmedPupil.isEmpty) {
+      throw ArgumentError.value(pupilId, 'pupilId', 'Must not be empty');
+    }
+    final trimmedDate = date?.trim();
+    final hasDate = trimmedDate != null && trimmedDate.isNotEmpty;
+    final uri = _base.replace(
+      path: '/stundenplan.php',
+      queryParameters: {
+        'a': 'detail_klasse',
+        'p': trimmedPupil,
+        if (hasDate) 'date': trimmedDate,
+      },
+    );
+    return _loadPlan(uri);
+  }
+
   Future<ParentTimetableLoaded> _loadPlan(Uri url) async {
     try {
       final response = await ctx.session.dio.get(url.toString());
-      return parseLoadedDocument(
+      final code = response.statusCode ?? 200;
+      if (code == 503) {
+        throw LanisDownException();
+      }
+      if (code >= 300 && code < 400) {
+        final location = response.headers.value('location') ?? '';
+        final lower = location.toLowerCase();
+        if (lower.contains('login') || lower.contains('index.php')) {
+          throw UnauthorizedException(
+            'Parent timetable detail: redirected to $location',
+          );
+        }
+        throw UnknownException(
+          'Parent timetable detail: unexpected HTTP $code redirect',
+        );
+      }
+      if (code < 200 || code >= 300) {
+        throw UnknownException('Parent timetable detail: unexpected HTTP $code');
+      }
+      final loaded = parseLoadedDocument(
         parse(response.data),
         pupilId: url.queryParameters['p']!,
       );
+      final requestedDate = TimetableUrlHelper.readDateParam(url);
+      if (requestedDate != null &&
+          loaded.timetable.planDate != null &&
+          loaded.timetable.planDate != requestedDate) {
+        throw UnknownException(
+          'Requested parent timetable date "$requestedDate", but portal returned "${loaded.timetable.planDate}"',
+        );
+      }
+      return loaded;
     } catch (error, stack) {
       if (error is LanisException) rethrow;
       if (CacheService.isTransportFailure(error)) {
