@@ -93,7 +93,8 @@ class CacheRequest<T> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is CacheRequest<T> &&
+      other is CacheRequest &&
+          runtimeType == other.runtimeType &&
           operation == other.operation &&
           version == other.version &&
           codec.id == other.codec.id &&
@@ -101,8 +102,14 @@ class CacheRequest<T> {
           argumentHash == other.argumentHash;
 
   @override
-  int get hashCode =>
-      Object.hash(operation, version, codec.id, maxAge, argumentHash);
+  int get hashCode => Object.hash(
+    runtimeType,
+    operation,
+    version,
+    codec.id,
+    maxAge,
+    argumentHash,
+  );
 
   static Object? _canonical(Object? value) {
     if (value == null || value is String || value is bool || value is int) {

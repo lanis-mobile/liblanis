@@ -194,6 +194,9 @@ class TimetableStudentParser extends AppletParser<TimeTable>
         : _base;
 
     final response1 = await ctx.session.dio.getUri(requestUri);
+    if (response1.statusCode == 503) {
+      throw LanisDownException();
+    }
 
     if (response1.data.toString().trim().isNotEmpty) {
       final document = parse(response1.data);

@@ -233,6 +233,25 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome>
   Future<ParentTimetableLoaded> _loadPlan(Uri url) async {
     try {
       final response = await ctx.session.dio.get(url.toString());
+      final code = response.statusCode ?? 200;
+      if (code == 503) {
+        throw LanisDownException();
+      }
+      if (code >= 300 && code < 400) {
+        final location = response.headers.value('location') ?? '';
+        final lower = location.toLowerCase();
+        if (lower.contains('login') || lower.contains('index.php')) {
+          throw UnauthorizedException(
+            'Parent timetable detail: redirected to $location',
+          );
+        }
+        throw UnknownException(
+          'Parent timetable detail: unexpected HTTP $code redirect',
+        );
+      }
+      if (code < 200 || code >= 300) {
+        throw UnknownException('Parent timetable detail: unexpected HTTP $code');
+      }
       final loaded = parseLoadedDocument(
         parse(response.data),
         pupilId: url.queryParameters['p']!,
