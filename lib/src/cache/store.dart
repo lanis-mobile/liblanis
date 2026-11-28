@@ -19,6 +19,14 @@ class CacheRecord {
 
 abstract interface class CacheStore {
   CacheRecord? readCacheRecord(CacheKey key, {bool otherVersion = false});
+  Set<String> listAvailableArgumentHashes({
+    required int accountId,
+    required String operation,
+    required int version,
+    required String codecId,
+    required DateTime now,
+    required DateTime minFetchedAt,
+  });
   CacheGeneration cacheGeneration(int accountId);
   bool writeCacheRecord(CacheRecord record, CacheGeneration generation);
   bool removeCacheRecord(CacheKey key, CacheGeneration generation);

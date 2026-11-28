@@ -815,6 +815,83 @@ void main() {
       expect(cached.timetables, hasLength(2));
     },
   );
+
+  test(
+    'availableRequestsFor batch-checks metadata across accounts, expiry, versions, and operations',
+    () async {
+      final r1 = request(
+        arguments: {'id': '1'},
+        age: const Duration(hours: 2),
+      );
+      final r2 = request(
+        arguments: {'id': '2'},
+        age: const Duration(minutes: 30),
+      );
+      final r3 = request(
+        arguments: {'id': '3'},
+        age: const Duration(hours: 2),
+      );
+      final rOtherOp = request(
+        operation: 'other.read',
+        arguments: {'id': '1'},
+        age: const Duration(hours: 2),
+      );
+      final rV2 = request(
+        arguments: {'id': '1'},
+        version: 2,
+        age: const Duration(hours: 2),
+      );
+
+      await cache.execute(accountId: account, request: r1, load: () async => 1);
+      await cache.execute(accountId: account, request: r2, load: () async => 2);
+      await cache.execute(
+        accountId: otherAccount,
+        request: r3,
+        load: () async => 3,
+      );
+      await cache.execute(
+        accountId: account,
+        request: rOtherOp,
+        load: () async => 4,
+      );
+
+      // Initially r1, r2, and rOtherOp are available for `account`; r3 (other account)
+      // and rV2 (different version) are not.
+      final initial = await cache.availableRequestsFor(
+        accountId: account,
+        requests: [r1, r2, r3, rOtherOp, rV2],
+      );
+      expect(initial, {r1, r2, rOtherOp});
+
+      // Advance clock past r2's 30-minute expiry while r1 remains valid.
+      now = start.add(const Duration(minutes: 45));
+      final afterExpiry = await cache.availableRequestsFor(
+        accountId: account,
+        requests: [r1, r2, r3, rOtherOp, rV2],
+      );
+      expect(afterExpiry, {r1, rOtherOp});
+
+      // Stricter request maxAge also filters out entries older than maxAge.
+      final r1Strict = request(
+        arguments: {'id': '1'},
+        age: const Duration(minutes: 15),
+      );
+      final strict = await cache.availableRequestsFor(
+        accountId: account,
+        requests: [r1Strict],
+      );
+      expect(strict, isEmpty);
+
+      // Empty input returns empty set.
+      expect(
+        await cache.availableRequestsFor<int>(
+          accountId: account,
+          requests: const [],
+        ),
+        isEmpty,
+      );
+    },
+  );
 }
 
 // No session or connection checker is created to parse or inspect this fixture.
