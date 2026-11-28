@@ -105,10 +105,19 @@ class TimetableParentParser extends AppletParser<ParentTimetableHome>
       final response = await ctx.session.dio.get(
         _base.resolve('stundenplan.php').toString(),
       );
+      if (response.statusCode == 503) {
+        throw LanisDownException();
+      }
       if (response.statusCode == 302) {
         final location = response.headers.value('location');
         if (location == null || location.isEmpty) {
           throw UnknownException('Missing parent timetable redirect location');
+        }
+        final lower = location.toLowerCase();
+        if (lower.contains('login') || lower.contains('index.php')) {
+          throw UnauthorizedException(
+            'Parent timetable overview: redirected to $location',
+          );
         }
         return await _loadPlan(_planUrl(response.realUri.resolve(location)));
       }

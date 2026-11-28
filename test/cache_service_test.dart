@@ -862,6 +862,13 @@ void main() {
         requests: [r1, r2, r3, rOtherOp, rV2],
       );
       expect(initial, {r1, r2, rOtherOp});
+      // Value equality allows membership checks with freshly constructed requests.
+      expect(
+        initial.contains(
+          request(arguments: {'id': '1'}, age: const Duration(hours: 2)),
+        ),
+        isTrue,
+      );
 
       // Advance clock past r2's 30-minute expiry while r1 remains valid.
       now = start.add(const Duration(minutes: 45));

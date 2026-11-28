@@ -278,6 +278,9 @@ class TimetableTeacherParser extends AppletParser<TeacherTimetableOverview>
       }
       throw UnknownException('$context: unexpected HTTP $code redirect');
     }
+    if (code == 503) {
+      throw LanisDownException();
+    }
     if (code < 200 || code >= 300) {
       throw UnknownException('$context: unexpected HTTP $code');
     }
